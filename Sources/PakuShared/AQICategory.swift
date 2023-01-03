@@ -1,4 +1,4 @@
-enum AQICategory: Double, CaseIterable {
+public enum AQICategory: Double, CaseIterable {
     case good                           = 0
     case moderate                       = 51
     case unhealthyForSensitiveGroups    = 101
@@ -6,7 +6,7 @@ enum AQICategory: Double, CaseIterable {
     case veryUnhealthy                  = 201
     case hazardous                      = 301
 
-    init(aqi: Double) {
+    public init(aqi: Double) {
         switch aqi {
         case ...50: self = .good
         case ...100: self = .moderate
@@ -17,7 +17,7 @@ enum AQICategory: Double, CaseIterable {
         }
     }
 
-    var description: String {
+    public var description: String {
         switch self {
         case .hazardous:
             return "Hazardous"

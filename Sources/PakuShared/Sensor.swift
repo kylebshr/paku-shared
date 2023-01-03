@@ -1,30 +1,30 @@
 import Foundation
 
-struct Sensor: Codable, Equatable, Identifiable {
-    enum InitError: Error {
+public struct Sensor: Codable, Equatable, Identifiable {
+    public enum InitError: Error {
         case missingField
     }
 
-    let id: Int
-    let name: String
-    let latitude: Double
-    let longitude: Double
-    let locationType: LocationType
-    let lastSeen: Date
-    let altitude: Double?
-    let humidity: Int?
-    let temperature: Int?
-    let confidence: Int?
-    let pm2_5: Double
-    let pm2_5_cf_1: Double
-    let pm2_5_10minute: Double
-    let pm2_5_30minute: Double
-    let pm2_5_60minute: Double
-    let pm2_5_6hour: Double
-    let pm2_5_24hour: Double
-    let pm2_5_1week: Double
+    public let id: Int
+    public let name: String
+    public let latitude: Double
+    public let longitude: Double
+    public let locationType: LocationType
+    public let lastSeen: Date
+    public let altitude: Double?
+    public let humidity: Int?
+    public let temperature: Int?
+    public let confidence: Int?
+    public let pm2_5: Double
+    public let pm2_5_cf_1: Double
+    public let pm2_5_10minute: Double
+    public let pm2_5_30minute: Double
+    public let pm2_5_60minute: Double
+    public let pm2_5_6hour: Double
+    public let pm2_5_24hour: Double
+    public let pm2_5_1week: Double
 
-    init(response: SensorResponse) throws {
+    public init(response: SensorResponse) throws {
         guard
             let pm2_5 = response.pm2_5,
             let pm2_5_cf_1 = response.pm2_5_cf_1,
@@ -58,7 +58,7 @@ struct Sensor: Codable, Equatable, Identifiable {
         self.pm2_5_1week = pm2_5_1week
     }
 
-    func aqiValue(
+    public func aqiValue(
         period: AverageTimePeriod,
         conversion: AQIConversion
     ) -> Double {
@@ -72,7 +72,7 @@ struct Sensor: Codable, Equatable, Identifiable {
         }
     }
 
-    func pm2_5(for period: AverageTimePeriod, conversion: AQIConversion) -> Double {
+    public func pm2_5(for period: AverageTimePeriod, conversion: AQIConversion) -> Double {
         switch period {
         case .now:
             return conversion == .EPA ? pm2_5_cf_1 : pm2_5
@@ -91,7 +91,7 @@ struct Sensor: Codable, Equatable, Identifiable {
         }
     }
 
-    func aqiCategory(period: AverageTimePeriod, conversion: AQIConversion) -> AQICategory {
+    public func aqiCategory(period: AverageTimePeriod, conversion: AQIConversion) -> AQICategory {
         return AQICategory(aqi: aqiValue(period: period, conversion: conversion))
     }
 
@@ -141,7 +141,7 @@ private extension Double {
 }
 
 extension Sensor: Comparable {
-    static func < (lhs: Sensor, rhs: Sensor) -> Bool {
+    public static func < (lhs: Sensor, rhs: Sensor) -> Bool {
         lhs.name.hashValue < rhs.name.hashValue
     }
 }
