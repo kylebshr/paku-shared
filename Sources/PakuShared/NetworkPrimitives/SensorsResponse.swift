@@ -1,5 +1,5 @@
 import Foundation
 
-struct SensorsResponse: Codable {
-    var sensors: [SensorResponse]
+public struct SensorsResponse: Codable {
+    public var sensors: [SensorResponse]
 }
