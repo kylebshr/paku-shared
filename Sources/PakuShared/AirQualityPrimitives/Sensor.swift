@@ -23,8 +23,9 @@ public struct Sensor: Codable, Equatable, Identifiable {
     public let pm2_5_6hour: Double
     public let pm2_5_24hour: Double
     public let pm2_5_1week: Double
+    public let isPrivateSensor: Bool
 
-    public init(response: SensorResponse) throws {
+    public init(response: SensorResponse, isPrivateSensor: Bool = false) throws {
         guard
             let pm2_5 = response.pm2_5,
             let pm2_5_cf_1 = response.pm2_5_cf_1,
@@ -56,6 +57,7 @@ public struct Sensor: Codable, Equatable, Identifiable {
         self.pm2_5_6hour = pm2_5_6hour
         self.pm2_5_24hour = pm2_5_24hour
         self.pm2_5_1week = pm2_5_1week
+        self.isPrivateSensor = isPrivateSensor
     }
 
     public func aqiValue(
