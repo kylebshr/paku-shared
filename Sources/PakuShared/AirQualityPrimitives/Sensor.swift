@@ -141,3 +141,9 @@ private extension Double {
         return max(self, 0)
     }
 }
+
+extension Sensor: Comparable {
+    public static func < (lhs: Sensor, rhs: Sensor) -> Bool {
+        lhs.name.hashValue < rhs.name.hashValue
+    }
+}
