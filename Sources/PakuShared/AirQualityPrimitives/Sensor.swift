@@ -23,6 +23,8 @@ public struct Sensor: Codable, Equatable, Identifiable {
     public let pm2_5_6hour: Double
     public let pm2_5_24hour: Double
     public let pm2_5_1week: Double
+    public let pm1_0: Double?
+    public let pm10_0: Double?
     public let isPrivateSensor: Bool
 
     public init(response: SensorResponse, isPrivateSensor: Bool = false) throws {
@@ -57,6 +59,8 @@ public struct Sensor: Codable, Equatable, Identifiable {
         self.pm2_5_6hour = pm2_5_6hour
         self.pm2_5_24hour = pm2_5_24hour
         self.pm2_5_1week = pm2_5_1week
+        self.pm1_0 = response.pm1_0
+        self.pm10_0 = response.pm10_0
         self.isPrivateSensor = isPrivateSensor
     }
 

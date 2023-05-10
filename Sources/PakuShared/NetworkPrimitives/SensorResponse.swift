@@ -19,6 +19,8 @@ public struct SensorResponse: Codable {
     public let pm2_5_6hour: Double?
     public let pm2_5_24hour: Double?
     public let pm2_5_1week: Double?
+    public let pm1_0: Double?
+    public let pm10_0: Double?
 
     public init(
         id: Int,
@@ -27,18 +29,20 @@ public struct SensorResponse: Codable {
         longitude: Double,
         locationType: LocationType,
         lastSeen: Date,
-        altitude: Double? = nil,
-        humidity: Double? = nil,
-        confidence: Int? = nil,
-        temperature: Double? = nil,
-        pm2_5: Double? = nil,
-        pm2_5_cf_1: Double? = nil,
-        pm2_5_10minute: Double? = nil,
-        pm2_5_30minute: Double? = nil,
-        pm2_5_60minute: Double? = nil,
-        pm2_5_6hour: Double? = nil,
-        pm2_5_24hour: Double? = nil,
-        pm2_5_1week: Double? = nil
+        altitude: Double?,
+        humidity: Double?,
+        confidence: Int?,
+        temperature: Double?,
+        pm2_5: Double?,
+        pm2_5_cf_1: Double?,
+        pm2_5_10minute: Double?,
+        pm2_5_30minute: Double?,
+        pm2_5_60minute: Double?,
+        pm2_5_6hour: Double?,
+        pm2_5_24hour: Double?,
+        pm2_5_1week: Double?,
+        pm1_0: Double?,
+        pm10_0: Double?
     ) {
         self.id = id
         self.name = name
@@ -58,5 +62,7 @@ public struct SensorResponse: Codable {
         self.pm2_5_6hour = pm2_5_6hour
         self.pm2_5_24hour = pm2_5_24hour
         self.pm2_5_1week = pm2_5_1week
+        self.pm1_0 = pm1_0
+        self.pm10_0 = pm10_0
     }
 }
