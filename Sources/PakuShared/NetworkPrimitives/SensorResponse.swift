@@ -12,6 +12,7 @@ public struct SensorResponse: Codable {
     public let confidence: Int?
     public let temperature: Double?
     public let pm2_5: Double?
+    public let pm2_5_atm: Double?
     public let pm2_5_cf_1: Double?
     public let pm2_5_10minute: Double?
     public let pm2_5_30minute: Double?
@@ -34,6 +35,7 @@ public struct SensorResponse: Codable {
         confidence: Int?,
         temperature: Double?,
         pm2_5: Double?,
+        pm2_5_atm: Double?,
         pm2_5_cf_1: Double?,
         pm2_5_10minute: Double?,
         pm2_5_30minute: Double?,
@@ -55,6 +57,7 @@ public struct SensorResponse: Codable {
         self.confidence = confidence
         self.temperature = temperature
         self.pm2_5 = pm2_5
+        self.pm2_5_atm = pm2_5_atm
         self.pm2_5_cf_1 = pm2_5_cf_1
         self.pm2_5_10minute = pm2_5_10minute
         self.pm2_5_30minute = pm2_5_30minute

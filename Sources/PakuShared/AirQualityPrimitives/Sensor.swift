@@ -17,6 +17,7 @@ public struct Sensor: Codable, Equatable, Identifiable {
     public let confidence: Int?
     public let pm2_5: Double
     public let pm2_5_cf_1: Double
+    public let pm2_5_atm: Double
     public let pm2_5_10minute: Double
     public let pm2_5_30minute: Double
     public let pm2_5_60minute: Double
@@ -30,6 +31,7 @@ public struct Sensor: Codable, Equatable, Identifiable {
     public init(response: SensorResponse, isPrivateSensor: Bool = false) throws {
         guard
             let pm2_5 = response.pm2_5,
+            let pm2_5_atm = response.pm2_5_atm,
             let pm2_5_cf_1 = response.pm2_5_cf_1,
             let pm2_5_10minute = response.pm2_5_10minute,
             let pm2_5_30minute = response.pm2_5_30minute,
@@ -52,6 +54,7 @@ public struct Sensor: Codable, Equatable, Identifiable {
         self.confidence = response.confidence
         self.temperature = response.temperature.map(Int.init)
         self.pm2_5 = pm2_5
+        self.pm2_5_atm = pm2_5_atm
         self.pm2_5_cf_1 = pm2_5_cf_1
         self.pm2_5_10minute = pm2_5_10minute
         self.pm2_5_30minute = pm2_5_30minute
@@ -74,14 +77,27 @@ public struct Sensor: Codable, Equatable, Identifiable {
         case .none:
             return aqiFrom(pm: pm2_5)
         case .EPA:
-            return epaAQI(pm2_5: pm2_5)
+            if locationType == .indoors {
+                return epaCFAQI(pm2_5: pm2_5)
+            } else {
+                return epaATMAQI(pm2_5: pm2_5)
+            }
         }
     }
 
-    public func pm2_5(for period: AverageTimePeriod, conversion: AQIConversion) -> Double {
+    private func pm2_5(for period: AverageTimePeriod, conversion: AQIConversion) -> Double {
         switch period {
         case .now:
-            return conversion == .EPA ? pm2_5_cf_1 : pm2_5
+            switch conversion {
+            case .EPA:
+                if locationType == .indoors {
+                    return pm2_5_cf_1
+                } else {
+                    return pm2_5_atm
+                }
+            case .none:
+                return pm2_5
+            }
         case .tenMinutes:
             return pm2_5_10minute
         case .halfHour:
@@ -107,7 +123,18 @@ public struct Sensor: Codable, Equatable, Identifiable {
         aqiFrom(pm: 0.778 * pm2_5 + 2.65).aqiClamped()
     }
 
-    private func epaAQI(pm2_5: Double) -> Double {
+    private func epaCFAQI(pm2_5: Double) -> Double {
+        let e = Double(humidity ?? 25)
+        let t = pm2_5
+
+        if t > 343 {
+            return 0.46 * t + 3.93 * pow(10, -4) * pow(t, 2) + 2.97
+        } else {
+            return 0.52 * t - 0.086 * e + 5.75
+        }
+    }
+
+    private func epaATMAQI(pm2_5: Double) -> Double {
         let e = Double(humidity ?? 25)
         let t = pm2_5
 
