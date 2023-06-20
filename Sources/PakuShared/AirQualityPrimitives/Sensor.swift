@@ -67,17 +67,17 @@ public struct Sensor: Codable, Equatable, Identifiable {
     public func aqiValue(
         period: AverageTimePeriod,
         conversion: AQIConversion
-    ) -> Double {
+    ) -> Int {
         let pm2_5 = self.pm2_5(for: period, conversion: conversion)
 
         switch conversion {
         case .none:
-            return aqiFrom(pm: pm2_5)
+            return Int(aqiFrom(pm: pm2_5).rounded(.up))
         case .EPA:
             if locationType == .indoors {
-                return epaCFAQI(pm2_5: pm2_5)
+                return Int(epaCFAQI(pm2_5: pm2_5).rounded(.up))
             } else {
-                return epaATMAQI(pm2_5: pm2_5)
+                return Int(epaATMAQI(pm2_5: pm2_5).rounded(.up))
             }
         }
     }
