@@ -11,8 +11,8 @@ public struct SensorHistoryResponse: Codable {
     public struct DataPoint: Codable {
         public var timestamp: Date
         public var pm2_5_60minute: Double?
-        public var humidity: Double?
-        public var temperature: Double?
+        public var humidity: Int?
+        public var temperature: Int?
         public var confidence: Int?
 
         public init(
@@ -24,8 +24,8 @@ public struct SensorHistoryResponse: Codable {
         ) {
             self.timestamp = timestamp
             self.pm2_5_60minute = pm2_5_60minute
-            self.humidity = humidity
-            self.temperature = temperature
+            self.humidity = humidity.map(Int.init)
+            self.temperature = temperature.map(Int.init)
             self.confidence = confidence
         }
     }
