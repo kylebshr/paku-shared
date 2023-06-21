@@ -9,11 +9,25 @@ import Foundation
 
 public struct SensorHistoryResponse: Codable {
     public struct DataPoint: Codable {
-        var timestamp: Date
-        var pm2_5_60minute: Double?
-        var humidity: Double?
-        var temperature: Double?
-        var confidence: Int?
+        public var timestamp: Date
+        public var pm2_5_60minute: Double?
+        public var humidity: Double?
+        public var temperature: Double?
+        public var confidence: Int?
+
+        public init(
+            timestamp: Date,
+            pm2_5_60minute: Double? = nil,
+            humidity: Double? = nil,
+            temperature: Double? = nil,
+            confidence: Int? = nil
+        ) {
+            self.timestamp = timestamp
+            self.pm2_5_60minute = pm2_5_60minute
+            self.humidity = humidity
+            self.temperature = temperature
+            self.confidence = confidence
+        }
     }
 
     public var sensorID: Int
