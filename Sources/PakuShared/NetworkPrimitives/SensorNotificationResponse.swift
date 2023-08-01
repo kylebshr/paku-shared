@@ -7,7 +7,7 @@ public struct SensorNotificationResponse: Codable, Hashable {
     public var threshold: Int
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
-    public var sendBelowThresholdNotifications: Bool
+    public var sendBelowThreshold: Bool
 
     public init(
         id: UUID,
@@ -16,7 +16,7 @@ public struct SensorNotificationResponse: Codable, Hashable {
         threshold: Int,
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
-        sendBelowThresholdNotifications: Bool
+        sendBelowThreshold: Bool
     ) {
         self.id = id
         self.sensorID = sensorID
@@ -24,6 +24,6 @@ public struct SensorNotificationResponse: Codable, Hashable {
         self.threshold = threshold
         self.conversion = conversion
         self.averagingPeriod = averagingPeriod
-        self.sendBelowThresholdNotifications = sendBelowThresholdNotifications
+        self.sendBelowThreshold = sendBelowThreshold
     }
 }
