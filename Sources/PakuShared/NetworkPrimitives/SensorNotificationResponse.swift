@@ -7,7 +7,7 @@ public struct SensorNotificationResponse: Codable, Hashable {
     public var threshold: Int
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
-    public var sendBelowThresholdNotifications: Bool?
+    public var sendBelowThresholdNotifications: Bool
 
     public init(
         id: UUID,
