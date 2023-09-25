@@ -8,7 +8,7 @@
 import Foundation
 
 public struct SensorHistoryResponse: Codable {
-    public struct DataPoint: Codable {
+    public struct DataPoint: Codable, Equatable, Hashable {
         public var timestamp: Date
         public var pm1_0: Double?
         public var pm2_5: Double?

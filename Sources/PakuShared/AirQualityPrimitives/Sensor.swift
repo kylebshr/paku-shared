@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Sensor: Codable, Equatable, Identifiable {
+public struct Sensor: Codable, Equatable, Identifiable, Hashable {
     public enum InitError: Error {
         case missingField
     }
