@@ -13,7 +13,7 @@ public enum AQI {
         humidity: Int?,
         conversion: AQIConversion,
         location: LocationType
-    ) -> Int {
+    ) -> Double {
         switch conversion {
         case .none:
             return aqiFrom(pm: pm2_5)
@@ -26,7 +26,7 @@ public enum AQI {
         }
     }
 
-    private static func epaCFAQI(pm2_5: Double, humidity: Int?) -> Int {
+    private static func epaCFAQI(pm2_5: Double, humidity: Int?) -> Double {
         let e = Double(humidity ?? 25)
         let t = pm2_5
 
@@ -41,7 +41,7 @@ public enum AQI {
         return aqiFrom(pm: correctedPM())
     }
 
-    private static func epaATMAQI(pm2_5: Double, humidity: Int?) -> Int {
+    private static func epaATMAQI(pm2_5: Double, humidity: Int?) -> Double {
         let e = Double(humidity ?? 25)
         let t = pm2_5
 
@@ -82,7 +82,7 @@ public enum AQI {
         return aqiFrom(pm: correctedPM())
     }
 
-    private static func aqiFrom(pm: Double) -> Int {
+    private static func aqiFrom(pm: Double) -> Double {
         if pm > 350.5 {
             return calcAQI(Cp: pm, Ih: 500, Il: 401, BPh: 500, BPl: 350.5)
         } else if pm > 250.5 {
@@ -102,19 +102,18 @@ public enum AQI {
         }
     }
 
-    private static func calcAQI(Cp: Double, Ih: Double, Il: Double, BPh: Double, BPl: Double) -> Int {
+    private static func calcAQI(Cp: Double, Ih: Double, Il: Double, BPh: Double, BPl: Double) -> Double {
         // The AQI equation https://forum.airnowtech.org/t/the-aqi-equation/169
         let a = Ih - Il;
         let b = BPh - BPl;
         let c = Cp - BPl;
         return ((a / b) * c + Il)
-            .rounded(.up)
             .aqiClamped()
     }
 }
 
 private extension Double {
-    func aqiClamped() -> Int {
-        return Int(max(self, 0))
+    func aqiClamped() -> Double {
+        return max(self, 0)
     }
 }

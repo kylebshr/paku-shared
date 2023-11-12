@@ -67,7 +67,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable {
     public func aqiValue(
         period: AverageTimePeriod,
         conversion: AQIConversion
-    ) -> Int {
+    ) -> Double {
         let pm2_5 = self.pm2_5(for: period)
         return AQI.value(
             for: pm2_5,

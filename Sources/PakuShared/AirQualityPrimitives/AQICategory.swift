@@ -6,7 +6,7 @@ public enum AQICategory: Int, CaseIterable {
     case veryUnhealthy                  = 201
     case hazardous                      = 301
 
-    public init(aqi: Int) {
+    public init(aqi: Double) {
         switch aqi {
         case ...50: self = .good
         case ...100: self = .moderate
