@@ -21,6 +21,7 @@ public struct SensorResponse: Codable {
     public let pm2_5_1week: Double?
     public let pm1_0: Double?
     public let pm10_0: Double?
+    public let voc: Double?
 
     public init(
         id: Int,
@@ -42,7 +43,8 @@ public struct SensorResponse: Codable {
         pm2_5_24hour: Double?,
         pm2_5_1week: Double?,
         pm1_0: Double?,
-        pm10_0: Double?
+        pm10_0: Double?,
+        voc: Double?
     ) {
         self.id = id
         self.name = name
@@ -64,5 +66,6 @@ public struct SensorResponse: Codable {
         self.pm2_5_1week = pm2_5_1week
         self.pm1_0 = pm1_0
         self.pm10_0 = pm10_0
+        self.voc = voc
     }
 }

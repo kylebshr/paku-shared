@@ -15,6 +15,7 @@ public struct SensorHistoryResponse: Codable {
         public var pm10_0: Double?
         public var humidity: Int?
         public var temperature: Int?
+        public var voc: Double?
         public var confidence: Int?
 
         public init(
@@ -24,6 +25,7 @@ public struct SensorHistoryResponse: Codable {
             pm10_0: Double?,
             humidity: Double?,
             temperature: Double?,
+            voc: Double?,
             confidence: Int?
         ) {
             self.timestamp = timestamp
