@@ -34,6 +34,7 @@ public struct SensorHistoryResponse: Codable {
             self.pm10_0 = pm10_0
             self.humidity = humidity.map(Int.init)
             self.temperature = temperature.map(Int.init)
+            self.voc = voc
             self.confidence = confidence
         }
     }
