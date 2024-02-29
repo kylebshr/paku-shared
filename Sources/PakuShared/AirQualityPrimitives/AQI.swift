@@ -14,34 +14,45 @@ public enum AQI {
         conversion: AQIConversion,
         location: LocationType
     ) -> Double {
+        aqiFrom(pm: correctedPM2_5(
+            for: pm2_5,
+            humidity: humidity,
+            conversion: conversion,
+            location: location
+        ))
+    }
+
+    public static func correctedPM2_5(
+        for pm2_5: Double,
+        humidity: Int?,
+        conversion: AQIConversion,
+        location: LocationType
+    ) -> Double {
         switch conversion {
         case .none:
-            return aqiFrom(pm: pm2_5)
+            return pm2_5
         case .EPA:
             if location == .indoors {
-                return epaCFAQI(pm2_5: pm2_5, humidity: humidity)
+                return epaCF_PM2_5(pm2_5: pm2_5, humidity: humidity)
             } else {
-                return epaATMAQI(pm2_5: pm2_5, humidity: humidity)
+                return epaATM_PM2_5(pm2_5: pm2_5, humidity: humidity)
             }
         }
     }
 
-    private static func epaCFAQI(pm2_5: Double, humidity: Int?) -> Double {
+    private static func epaCF_PM2_5(pm2_5: Double, humidity: Int?) -> Double {
         let e = Double(humidity ?? 25)
         let t = pm2_5
 
-        func correctedPM() -> Double {
-            if t > 343 {
-                return 0.46 * t + 3.93 * pow(10, -4) * pow(t, 2) + 2.97
-            } else {
-                return 0.52 * t - 0.086 * e + 5.75
-            }
+        if t > 343 {
+            return 0.46 * t + 3.93 * pow(10, -4) * pow(t, 2) + 2.97
+        } else {
+            return 0.52 * t - 0.086 * e + 5.75
         }
-
-        return aqiFrom(pm: correctedPM())
     }
 
-    private static func epaATMAQI(pm2_5: Double, humidity: Int?) -> Double {
+
+    private static func epaATM_PM2_5(pm2_5: Double, humidity: Int?) -> Double {
         let e = Double(humidity ?? 25)
         let t = pm2_5
 
@@ -65,21 +76,17 @@ public enum AQI {
             0.524 * t - 0.0862 * e + 5.75
         }
 
-        func correctedPM() -> Double {
-            if t >= 260 {
-                return t260()
-            } else if t >= 210 {
-                return t210()
-            } else if t >= 50 {
-                return t50()
-            } else if t >= 30 {
-                return t30()
-            } else {
-                return d()
-            }
+        if t >= 260 {
+            return t260()
+        } else if t >= 210 {
+            return t210()
+        } else if t >= 50 {
+            return t50()
+        } else if t >= 30 {
+            return t30()
+        } else {
+            return d()
         }
-
-        return aqiFrom(pm: correctedPM())
     }
 
     private static func aqiFrom(pm: Double) -> Double {
