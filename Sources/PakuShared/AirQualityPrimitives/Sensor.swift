@@ -79,6 +79,19 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable {
         )
     }
 
+    public func aqhiValue(
+        period: AverageTimePeriod,
+        conversion: AQIConversion
+    ) -> Double {
+        let pm2_5 = self.pm2_5(for: period)
+        return AQI.aqhi(
+            for: pm2_5,
+            humidity: humidity,
+            conversion: conversion,
+            location: locationType
+        )
+    }
+
     public func pm2_5(for period: AverageTimePeriod) -> Double {
         switch period {
         case .now:
@@ -100,6 +113,10 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable {
 
     public func aqiCategory(period: AverageTimePeriod, conversion: AQIConversion) -> AQICategory {
         return AQICategory(aqi: aqiValue(period: period, conversion: conversion))
+    }
+
+    public func aqhiCategory(period: AverageTimePeriod, conversion: AQIConversion) -> AQHICategory {
+        return AQHICategory(aqhi: aqhiValue(period: period, conversion: conversion))
     }
 }
 
