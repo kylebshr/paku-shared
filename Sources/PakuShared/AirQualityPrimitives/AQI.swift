@@ -36,7 +36,7 @@ public enum AQI {
             location: location
         )
 
-        let value = ceil((1000 / 10.4) * (pow(Double.exp(1), 0.000487 * pm) - 1))
+        let value = (1000 / 10.4) * (pow(Double.exp(1), 0.000487 * pm) - 1)
         return max(value, 1)
     }
 
