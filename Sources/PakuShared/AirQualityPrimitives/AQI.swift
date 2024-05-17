@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Numerics
 
 public enum AQI {
     public static func value(
@@ -27,7 +28,7 @@ public enum AQI {
         humidity: Int?,
         conversion: AQIConversion,
         location: LocationType
-    ) -> Int {
+    ) -> Double {
         let pm = correctedPM2_5(
             for: pm2_5,
             humidity: humidity,
@@ -35,7 +36,7 @@ public enum AQI {
             location: location
         )
 
-        let value = Int(ceil((1000 / 10.4) * (pow(Darwin.M_E, 0.000487 * pm) - 1)))
+        let value = ceil((1000 / 10.4) * (pow(Double.exp(1), 0.000487 * pm) - 1))
         return max(value, 1)
     }
 
