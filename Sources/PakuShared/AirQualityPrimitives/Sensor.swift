@@ -116,7 +116,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable {
     }
 
     public func aqhiCategory(period: AverageTimePeriod, conversion: AQIConversion) -> AQHICategory {
-        return AQHICategory(aqhi: aqhiValue(period: period, conversion: conversion))
+        return AQHICategory(aqhi: aqhiValue(period: period, conversion: conversion).rounded(.up))
     }
 }
 
