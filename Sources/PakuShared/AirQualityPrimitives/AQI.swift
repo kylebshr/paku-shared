@@ -111,13 +111,13 @@ public enum AQI {
         if pm > 225.5 {
             return calcAQI(Cp: pm, Ih: 500, Il: 301, BPh: 500, BPl: 225.5)
         } else if pm > 125.5 {
-            return calcAQI(Cp: pm, Ih: 300, Il: 201, BPh: 225.5, BPl: 125.5)
+            return calcAQI(Cp: pm, Ih: 300, Il: 201, BPh: 225.4, BPl: 125.5)
         } else if pm > 55.5 {
-            return calcAQI(Cp: pm, Ih: 200, Il: 151, BPh: 125.5, BPl: 55.5)
+            return calcAQI(Cp: pm, Ih: 200, Il: 151, BPh: 125.4, BPl: 55.5)
         } else if pm > 35.5 {
-            return calcAQI(Cp: pm, Ih: 150, Il: 101, BPh: 55.5, BPl: 35.5)
+            return calcAQI(Cp: pm, Ih: 150, Il: 101, BPh: 55.4, BPl: 35.5)
         } else if pm > 9.0 {
-            return calcAQI(Cp: pm, Ih: 100, Il: 51, BPh: 35.5, BPl: 9.0)
+            return calcAQI(Cp: pm, Ih: 100, Il: 51, BPh: 35.4, BPl: 9.1)
         } else if pm >= 0 {
             return calcAQI(Cp: pm, Ih: 50, Il: 0, BPh: 9.0, BPl: 0)
         } else {
