@@ -108,20 +108,18 @@ public enum AQI {
     }
 
     private static func aqiFrom(pm: Double) -> Double {
-        if pm > 350.5 {
-            return calcAQI(Cp: pm, Ih: 500, Il: 401, BPh: 500, BPl: 350.5)
-        } else if pm > 250.5 {
-            return calcAQI(Cp: pm, Ih: 400, Il: 301, BPh: 350.4, BPl: 250.5)
-        } else if pm > 150.5 {
-            return calcAQI(Cp: pm, Ih: 300, Il: 201, BPh: 250.4, BPl: 150.5)
+        if pm > 225.5 {
+            return calcAQI(Cp: pm, Ih: 500, Il: 301, BPh: 500, BPl: 225.5)
+        } else if pm > 125.5 {
+            return calcAQI(Cp: pm, Ih: 300, Il: 201, BPh: 225.5, BPl: 125.5)
         } else if pm > 55.5 {
-            return calcAQI(Cp: pm, Ih: 200, Il: 151, BPh: 150.4, BPl: 55.5)
+            return calcAQI(Cp: pm, Ih: 200, Il: 151, BPh: 125.5, BPl: 55.5)
         } else if pm > 35.5 {
-            return calcAQI(Cp: pm, Ih: 150, Il: 101, BPh: 55.4, BPl: 35.5)
-        } else if pm > 12.1 {
-            return calcAQI(Cp: pm, Ih: 100, Il: 51, BPh: 35.4, BPl: 12.1)
+            return calcAQI(Cp: pm, Ih: 150, Il: 101, BPh: 55.5, BPl: 35.5)
+        } else if pm > 9.0 {
+            return calcAQI(Cp: pm, Ih: 100, Il: 51, BPh: 35.5, BPl: 9.0)
         } else if pm >= 0 {
-            return calcAQI(Cp: pm, Ih: 50, Il: 0, BPh: 12, BPl: 0)
+            return calcAQI(Cp: pm, Ih: 50, Il: 0, BPh: 9.0, BPl: 0)
         } else {
             return 0
         }
