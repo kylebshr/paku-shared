@@ -40,6 +40,23 @@ public enum AQI {
         return max(value, 1)
     }
 
+    public static func aqhiPlus(
+        for pm2_5: Double,
+        humidity: Int?,
+        conversion: AQIConversion,
+        location: LocationType
+    ) -> Double {
+        let pm = correctedPM2_5(
+            for: pm2_5,
+            humidity: humidity,
+            conversion: conversion,
+            location: location
+        )
+
+        let value = pm / 10.0
+        return max(value.rounded(.up), 1)
+    }
+
     public static func correctedPM2_5(
         for pm2_5: Double,
         humidity: Int?,

@@ -9,6 +9,13 @@ final class AQITests: XCTestCase {
         XCTAssertEqual(1, AQI.aqhi(for: 0, humidity: 37, conversion: .none, location: .outdoors).rounded())
     }
 
+    func test_aqhiPlus() throws {
+        XCTAssertEqual(17, AQI.aqhiPlus(for: 168, humidity: 40, conversion: .none, location: .outdoors).rounded())
+        XCTAssertEqual(5, AQI.aqhiPlus(for: 42, humidity: 54, conversion: .none, location: .outdoors).rounded())
+        XCTAssertEqual(4, AQI.aqhiPlus(for: 39, humidity: 37, conversion: .none, location: .outdoors).rounded())
+        XCTAssertEqual(1, AQI.aqhiPlus(for: 0, humidity: 37, conversion: .none, location: .outdoors).rounded())
+    }
+
     func test_aqi_outdoors() {
         XCTAssertEqual(243, AQI.value(for: 168, humidity: 40, conversion: .none, location: .outdoors).rounded())
         XCTAssertEqual(124, AQI.value(for: 45, humidity: 54, conversion: .none, location: .outdoors).rounded())
