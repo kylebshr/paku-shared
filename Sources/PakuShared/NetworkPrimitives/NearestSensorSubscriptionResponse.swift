@@ -3,7 +3,7 @@ import Foundation
 public struct NearestSensorSubscriptionResponse: Codable {
     public var enabled: Bool
     public var currentSensorID: Int
-    public var currentSensorName: String?
+    public var currentSensorName: String
     public var threshold: Int
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
@@ -14,7 +14,7 @@ public struct NearestSensorSubscriptionResponse: Codable {
     public init(
         enabled: Bool,
         currentSensorID: Int,
-        currentSensorName: String?,
+        currentSensorName: String,
         threshold: Int,
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
