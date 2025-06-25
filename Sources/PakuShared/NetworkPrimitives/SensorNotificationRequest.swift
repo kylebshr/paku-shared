@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SensorNotificationRequest: Codable {
+public struct SensorNotificationRequest: Codable, Sendable {
     public var userID: UUID
     public var sensorID: Int
     public var threshold: Int

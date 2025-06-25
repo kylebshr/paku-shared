@@ -1,6 +1,6 @@
 import Foundation
 
-public struct NearestSensorSubscriptionResponse: Codable {
+public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var enabled: Bool
     public var currentSensorID: Int
     public var currentSensorName: String

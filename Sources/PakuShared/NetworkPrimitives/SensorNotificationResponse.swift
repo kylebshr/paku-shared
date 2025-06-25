@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SensorNotificationResponse: Codable, Hashable {
+public struct SensorNotificationResponse: Codable, Hashable, Sendable {
     public var id: UUID
     public var sensorID: Int
     public var sensorName: String

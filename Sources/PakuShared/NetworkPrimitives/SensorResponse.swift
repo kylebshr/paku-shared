@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SensorResponse: Codable {
+public struct SensorResponse: Codable, Sendable {
     public let id: Int
     public let name: String
     public let latitude: Double

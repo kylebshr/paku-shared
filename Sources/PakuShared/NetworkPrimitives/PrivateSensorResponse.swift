@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PrivateSensorResponse: Codable {
+public struct PrivateSensorResponse: Codable, Sendable {
     public var id: UUID
     public var name: String
     public let sensorID: Int

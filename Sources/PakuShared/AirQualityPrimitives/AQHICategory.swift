@@ -1,4 +1,4 @@
-public enum AQHICategory: Int, CaseIterable {
+public enum AQHICategory: Int, CaseIterable, Sendable {
     case lowRisk        = 0
     case moderateRisk   = 4
     case highRisk       = 7

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct RegisterPrivateSensorRequest: Codable {
+public struct RegisterPrivateSensorRequest: Codable, Sendable {
     public var userID: UUID
     public var sensorID: String
     public var ownerEmail: String

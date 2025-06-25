@@ -1,4 +1,4 @@
-public enum AQICategory: Int, CaseIterable {
+public enum AQICategory: Int, CaseIterable, Sendable {
     case good                           = 0
     case moderate                       = 51
     case unhealthyForSensitiveGroups    = 101

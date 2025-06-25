@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum AQI {
+public enum AQI: Sendable {
     public static func value(
         for pm2_5: Double,
         humidity: Int?,

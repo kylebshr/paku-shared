@@ -1,6 +1,6 @@
 import Foundation
 
-public struct CreateNearestSensorSubscriptionRequest: Codable {
+public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
     public var userID: UUID
     public var sensorID: Int
     public var threshold: Int
@@ -25,7 +25,7 @@ public struct CreateNearestSensorSubscriptionRequest: Codable {
     }
 }
 
-public struct UpdateNearestSensorRequest: Codable {
+public struct UpdateNearestSensorRequest: Codable, Sendable {
     public var userID: UUID
     public var sensorID: Int
     
