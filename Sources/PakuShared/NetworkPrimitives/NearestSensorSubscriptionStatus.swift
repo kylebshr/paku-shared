@@ -1,5 +1,9 @@
 import Foundation
 
-struct NearestSensorSubscriptionStatus: Codable, Sendable {
-    var subscription: NearestSensorSubscriptionResponse?
+public struct NearestSensorSubscriptionStatus: Codable, Sendable {
+    public var subscription: NearestSensorSubscriptionResponse?
+
+    init(subscription: NearestSensorSubscriptionResponse?) {
+        self.subscription = subscription
+    }
 }
