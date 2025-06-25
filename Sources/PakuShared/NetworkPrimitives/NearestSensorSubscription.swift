@@ -1,7 +1,6 @@
 import Foundation
 
 public struct NearestSensorSubscriptionResponse: Codable, Sendable {
-    public var enabled: Bool
     public var currentSensorID: Int
     public var currentSensorName: String
     public var threshold: Int
@@ -12,7 +11,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var lastWidgetUpdate: Date
     
     public init(
-        enabled: Bool,
         currentSensorID: Int,
         currentSensorName: String,
         threshold: Int,
@@ -22,7 +20,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         updatedAt: Date?,
         lastWidgetUpdate: Date
     ) {
-        self.enabled = enabled
         self.currentSensorID = currentSensorID
         self.currentSensorName = currentSensorName
         self.threshold = threshold
