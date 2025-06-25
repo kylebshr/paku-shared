@@ -2,7 +2,7 @@ import Foundation
 
 public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
     public var userID: UUID
-    public var sensorID: Int
+    public var sensorID: Int?
     public var threshold: Int
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
@@ -10,7 +10,7 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
     
     public init(
         userID: UUID,
-        sensorID: Int,
+        sensorID: Int? = nil,
         threshold: Int,
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
@@ -27,9 +27,9 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
 
 public struct UpdateNearestSensorRequest: Codable, Sendable {
     public var userID: UUID
-    public var sensorID: Int
+    public var sensorID: Int?
     
-    public init(userID: UUID, sensorID: Int) {
+    public init(userID: UUID, sensorID: Int?) {
         self.userID = userID
         self.sensorID = sensorID
     }

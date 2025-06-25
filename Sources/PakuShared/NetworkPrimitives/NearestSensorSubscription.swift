@@ -1,8 +1,8 @@
 import Foundation
 
 public struct NearestSensorSubscriptionResponse: Codable, Sendable {
-    public var currentSensorID: Int
-    public var currentSensorName: String
+    public var currentSensorID: Int?
+    public var currentSensorName: String?
     public var threshold: Int
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
@@ -11,8 +11,8 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var lastWidgetUpdate: Date
     
     public init(
-        currentSensorID: Int,
-        currentSensorName: String,
+        currentSensorID: Int?,
+        currentSensorName: String?,
         threshold: Int,
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
