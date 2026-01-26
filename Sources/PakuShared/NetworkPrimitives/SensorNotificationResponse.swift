@@ -18,7 +18,7 @@ public struct SensorNotificationResponse: Codable, Hashable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
-        isNearestSensor: Bool = false
+        isNearestSensor: Bool
     ) {
         self.id = id
         self.sensorID = sensorID

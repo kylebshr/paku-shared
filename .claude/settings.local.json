@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(swift build)",
-      "Bash(swift test)"
+      "Bash(swift test)",
+      "Skill(migrating-to-swift-concurrency-skill:migrating-to-swift-concurrency)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
