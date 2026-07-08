@@ -11,7 +11,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
     public var sendBelowThreshold: Bool
-    public var updatedAt: Date?
     public var lastReportedAt: Date
 
     public init(
@@ -22,7 +21,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
-        updatedAt: Date?,
         lastReportedAt: Date
     ) {
         self.deviceID = deviceID
@@ -32,7 +30,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         self.conversion = conversion
         self.averagingPeriod = averagingPeriod
         self.sendBelowThreshold = sendBelowThreshold
-        self.updatedAt = updatedAt
         self.lastReportedAt = lastReportedAt
     }
 }
