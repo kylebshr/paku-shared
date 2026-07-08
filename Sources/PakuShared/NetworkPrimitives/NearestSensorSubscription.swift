@@ -8,8 +8,8 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var averagingPeriod: AverageTimePeriod
     public var sendBelowThreshold: Bool
     public var updatedAt: Date?
-    public var lastWidgetUpdate: Date
-    
+    public var lastReportedAt: Date
+
     public init(
         currentSensorID: Int?,
         currentSensorName: String?,
@@ -18,7 +18,7 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
         updatedAt: Date?,
-        lastWidgetUpdate: Date
+        lastReportedAt: Date
     ) {
         self.currentSensorID = currentSensorID
         self.currentSensorName = currentSensorName
@@ -27,6 +27,6 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         self.averagingPeriod = averagingPeriod
         self.sendBelowThreshold = sendBelowThreshold
         self.updatedAt = updatedAt
-        self.lastWidgetUpdate = lastWidgetUpdate
+        self.lastReportedAt = lastReportedAt
     }
 }
