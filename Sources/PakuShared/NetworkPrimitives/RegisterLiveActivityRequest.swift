@@ -14,9 +14,10 @@ public struct RegisterLiveActivityRequest: Codable, Sendable {
 
     public var environment: LiveActivityEnvironment
 
-    /// Omitted when the device doesn't know its sensor yet (e.g. a
-    /// push-to-start pickup in the background).
-    public var sensorID: Int?
+    /// The sensor the activity tracks. Always known on the client — even a
+    /// push-to-start activity carries the server-seeded sensor in its
+    /// content state.
+    public var sensorID: Int
 
     /// Meters to the sensor.
     public var distance: Double?
@@ -29,7 +30,7 @@ public struct RegisterLiveActivityRequest: Codable, Sendable {
         activityID: String,
         pushToken: String,
         environment: LiveActivityEnvironment,
-        sensorID: Int?,
+        sensorID: Int,
         distance: Double?,
         conversion: AQIConversion
     ) {
