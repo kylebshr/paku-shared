@@ -24,15 +24,12 @@ final class TrendDirectionTests: XCTestCase {
         XCTAssertEqual(.flat, TrendDirection.of(samples: samples([10, 11, 12]), deadbandPerHour: 4))
     }
 
-    /// The old rule compared `Int`-truncated values, so a 0.2-unit jiggle
-    /// straddling an integer (45.9 → 46.1) rendered an arrow.
+    /// A 0.2-unit jiggle straddling an integer must not render an arrow.
     func testIntegerBoundaryJitterIsFlat() {
         XCTAssertEqual(.flat, TrendDirection.of(samples: samples([45.9, 46.1, 45.9]), deadbandPerHour: 4))
     }
 
-    /// The old rule truncated a near-full-unit move (45.1 → 45.9) to
-    /// "equal", hiding a genuine climb when it repeats across hours — the
-    /// fitted slope only cares about the actual rate.
+    /// A steady sub-unit-per-sample climb is still a climb.
     func testSteadyClimbBeatsTruncation() {
         XCTAssertEqual(.up, TrendDirection.of(samples: samples([45.1, 47.6, 50.1]), deadbandPerHour: 4))
     }
@@ -72,23 +69,19 @@ final class TrendDirectionTests: XCTestCase {
         XCTAssertEqual(.flat, TrendDirection.between(fast: 21, slow: 20, deadband: 3))
     }
 
-    /// The deadband is exclusive on both sides, so a difference sitting
-    /// exactly on it reads as movement rather than flapping on rounding.
+    /// A difference sitting exactly on the deadband reads as movement.
     func testCrossoverAtExactlyTheDeadbandIsMovement() {
         XCTAssertEqual(.up, TrendDirection.between(fast: 23, slow: 20, deadband: 3))
         XCTAssertEqual(.down, TrendDirection.between(fast: 17, slow: 20, deadband: 3))
     }
 
-    /// The whole point of the crossover: it reacts to a spike inside the
-    /// fast window, where a slope over 30-minute history rows could not.
+    /// A spike inside the fast window reads as rising even though it has
+    /// barely moved the hour's average.
     func testCrossoverCatchesASpikeTheSlowAverageHasBarelyFelt() {
-        // A sharp rise in the last ten minutes has moved the hour's average
-        // only slightly — the crossover still calls it rising.
         XCTAssertEqual(.up, TrendDirection.between(fast: 85, slow: 26, deadband: 3))
     }
 
-    /// The deadband is per-kind precisely because scales differ: the same
-    /// climb that's a trend on AQHI's 1–11 scale is noise on VOC's 0–1500.
+    /// The same climb is a trend on AQHI's 1–11 scale, noise on VOC's 0–1500.
     func testDeadbandScalesWithKind() {
         let climb = samples([10, 11, 12])
         XCTAssertEqual(.up, TrendDirection.of(samples: climb, deadbandPerHour: 0.5))

@@ -59,12 +59,9 @@ public struct LiveActivityContentState: Codable, Hashable, Sendable {
 }
 
 extension LiveActivityContentState {
-    /// Builds the content state from a sensor's current reading, the user's
-    /// conversion, the last reported distance, and the sensor's history.
-    /// Shared by the app (the initial request, local foreground refreshes,
-    /// and widget previews) and the server's push job, so both sides
-    /// construct identical states. Pure (the clock is a parameter), so the
-    /// trend and history-window rules are unit-testable.
+    /// Builds the content state. Shared by the app and the server's push
+    /// job so both construct identical states; pure (the clock is a
+    /// parameter) for testability.
     public static func build(
         sensor: Sensor,
         conversion: AQIConversion,
@@ -75,10 +72,8 @@ extension LiveActivityContentState {
         let aqi = sensor.aqiValue(period: .now, conversion: conversion)
 
         func aqiValue(for point: SensorHistoryResponse.DataPoint) -> Double? {
-            // The window's peak where the server recorded one, so a spike
-            // between snapshots survives to the chart — matching the app's
-            // charts. Rows without one (older servers, sensors that weren't
-            // reporting) fall back to the sampled value.
+            // The window's peak where recorded, so spikes between snapshots
+            // survive to the chart — matching the app's charts.
             guard let pm2_5 = point.pm2_5_max ?? point.pm2_5 else {
                 return nil
             }
@@ -91,22 +86,16 @@ extension LiveActivityContentState {
             )
         }
 
-        // The current reading is stamped at lastSeen, never in the future:
-        // a clock-skewed sensor must not push the newest point past `now`,
-        // and everything older is clamped to it so the points stay
-        // ascending. History rows newer than lastSeen carry frozen data —
-        // the server stamps rows with the crawl time even for a sensor
-        // that's stopped reporting — so the same bound drops those too.
+        // The current reading is stamped at lastSeen, clamped so a
+        // clock-skewed sensor can't push it past `now`. The same bound drops
+        // history rows newer than lastSeen — the server stamps rows with the
+        // crawl time even for a sensor that's stopped reporting, so those
+        // carry frozen data.
         let currentTimestamp = min(sensor.lastSeen, now)
 
-        // Trend: the sensor's own 10-minute average crossed against its
-        // 60-minute one. Both come off the sensor itself, computed from
-        // readings every couple of minutes, so this reacts to a spike in
-        // minutes where the 30-minute history rows would take half an hour
-        // — and it needs no history at all, so an arrow still renders when
-        // the history query comes back empty. Shared with the app's widget
-        // and watch arrows so every surface agrees for the same sensor.
-        // A quiet sensor's averages are frozen; nothing to report.
+        // Trend: the sensor's own fast average crossed against its slow
+        // one — reacts to a spike in minutes and needs no history, so an
+        // arrow renders even when the history query comes back empty.
         let direction: TrendDirection? = if now.timeIntervalSince(sensor.lastSeen) > TrendDirection.stalenessLimit {
             nil
         } else {
@@ -124,12 +113,9 @@ extension LiveActivityContentState {
         case nil: nil
         }
 
-        // History: the last 24 hours of rows, oldest→newest, with the
-        // current reading closing out the series at its raw timestamp. The
-        // server writes one row per half hour, so a window holds at most 48
-        // rows — with the current point appended that sits exactly at the
-        // ≤49-point / 4KB APNs cap, and suffix() drops the oldest on the
-        // rare straddle.
+        // History rows are half-hourly, so 24 hours plus the current point
+        // is at most 49 points — the APNs payload cap; suffix() drops the
+        // oldest on the rare straddle.
         let cutoff = now.addingTimeInterval(-24 * 60 * 60)
 
         var points = history

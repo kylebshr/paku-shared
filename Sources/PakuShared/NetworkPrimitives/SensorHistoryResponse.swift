@@ -13,10 +13,9 @@ public struct SensorHistoryResponse: Codable, Sendable {
         public var pm1_0: Double?
         public var pm2_5: Double?
 
-        /// The highest reading observed during the row's window, rather than
-        /// the single value sampled at its end. Health-index charts prefer
-        /// this so a short spike between snapshots survives to the bin.
-        /// Nil on rows written before the server tracked it.
+        /// The highest reading observed during the row's window, so a spike
+        /// between snapshots isn't lost. Nil on rows written before the
+        /// server tracked it.
         public var pm2_5_max: Double?
 
         public var pm10_0: Double?

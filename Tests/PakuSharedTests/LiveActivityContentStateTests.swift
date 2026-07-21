@@ -92,14 +92,10 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(state.ls, sensor.lastSeen)
     }
 
-    // The current point is stamped at lastSeen and must never sit in the
-    // future — the old builder snapped it to the *nearest* half hour, which
-    // rounded up to 15 minutes ahead of the clock.
+    // The current point lands on lastSeen exactly, clamped to now.
     func testSyntheticPointNeverExceedsNow() throws {
         let now = Date()
 
-        // lastSeen a few minutes back: the point lands on it exactly, with
-        // no rounding up to the next half-hour slot.
         let recent = try makeSensor(pm2_5: 20, lastSeen: now.addingTimeInterval(-4 * 60))
         let recentState = LiveActivityContentState.build(
             sensor: recent, conversion: .none, distance: nil, history: [], now: now
@@ -114,9 +110,8 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(skewedState.h?.last?.t, now)
     }
 
-    // The trend no longer reads history at all: it crosses the sensor's own
-    // 10-minute average against its 60-minute one, so an arrow renders even
-    // when the history query comes back empty.
+    // The trend comes off the sensor's own averages, not history — an
+    // arrow renders even when the history query comes back empty.
     func testTrendIgnoresHistoryEntirely() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, pm2_5_10minute: 40, pm2_5_60minute: 20, lastSeen: now)
@@ -124,8 +119,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         let withoutHistory = LiveActivityContentState.build(
             sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
-        // Steeply falling rows — under the old slope rule this drove the
-        // arrow down; now it has no say.
+        // Steeply falling rows must have no say.
         let fallingRows: [SensorHistoryResponse.DataPoint] = (0..<4).map { index in
             let value: Double = 80 - Double(index) * 20
             let age: TimeInterval = -1800 * Double(4 - index)
@@ -140,8 +134,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(withContraryHistory.t, 1, "History must not sway the crossover")
     }
 
-    // A sensor quiet for over an hour has frozen averages, so a crossover
-    // between them describes nothing current.
+    // A quiet sensor's averages are frozen; no trend.
     func testTrendIsNilForStaleSensor() throws {
         let now = Date()
         let sensor = try makeSensor(
@@ -156,9 +149,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertNil(state.t)
     }
 
-    // The old rule compared Int-truncated values, so a sub-unit difference
-    // straddling an integer rendered an arrow. The deadband is a real level
-    // difference now — 3 AQI.
+    // A sub-unit jiggle straddling an integer stays inside the deadband.
     func testTrendFlatForIntegerBoundaryJitter() throws {
         let now = Date()
         // ~1:1 with AQI down here, so the gap stays inside the deadband.
@@ -207,8 +198,7 @@ final class LiveActivityContentStateTests: XCTestCase {
     }
 
 
-    // History is the last 24 hours oldest→newest plus the current reading
-    // stamped at the sensor's raw lastSeen.
+    // The last 24 hours oldest→newest, plus the current reading at lastSeen.
     func testHistoryWindowOrderingAndSyntheticCurrentPoint() throws {
         let now = Date()
         let lastSeen = now.addingTimeInterval(-90)
@@ -237,10 +227,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points.last?.v, Int16(sensor.aqiValue(period: .now, conversion: .none).rounded()))
     }
 
-    // A row carries its window's peak where the server recorded one, and
-    // the chart reads it over the sampled value — matching the app's charts
-    // — so a spike between snapshots isn't lost. Rows without one (older
-    // servers, sensors that weren't reporting) fall back to the sample.
+    // Rows chart their recorded peak, falling back to the sampled value.
     func testHistoryPrefersRowPeakOverSampledValue() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
@@ -265,15 +252,12 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points[1].v, Int16(sample.rounded()), "A row without one falls back to the sample")
     }
 
-    // A 24-hour window holds at most 48 half-hourly rows; with the current
-    // point appended on top the builder must cap at 49, dropping the
-    // oldest — the ≤49-point APNs budget.
+    // The ≤49-point APNs budget: cap, dropping the oldest.
     func testHistoryIsCappedAtFortyNinePointsDroppingOldest() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
-        // 48 slots marching back from just before lastSeen, plus one in
-        // the partial slot at the window's old edge: 49 slots in-window.
+        // 49 rows in-window; with the current point appended, one over cap.
         var history = (0..<48).map { index in
             makePoint(pm2_5: 20, timestamp: now.addingTimeInterval(TimeInterval(-30 - 1800 * index)))
         }
@@ -293,11 +277,8 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points.first?.t, now.addingTimeInterval(-30 - 1800 * 47), "The oldest row is dropped")
     }
 
-    // The server stamps a history row for every cached sensor even after it
-    // stops reporting, so an offline sensor accrues rows newer than its
-    // lastSeen carrying frozen data. Those must be dropped so the points
-    // (with the synthetic current point appended) stay chronologically
-    // ascending.
+    // Rows newer than lastSeen carry frozen data for an offline sensor;
+    // dropping them keeps the points ascending.
     func testHistoryClampsToLastSeenForOfflineSensor() throws {
         let now = Date()
         let lastSeen = now.addingTimeInterval(-2 * 60 * 60)
@@ -331,10 +312,8 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
     }
 
-    // The current point is appended at its raw timestamp with no collision
-    // pass, so it can share a slot — even an exact timestamp — with the
-    // newest history row. That is fine: the client re-bins, and the only
-    // hard requirement is that points never go backwards.
+    // The current point may share a timestamp with the newest row — the
+    // client re-bins; points just must never go backwards.
     func testCurrentPointCoexistsWithARowSharingItsSlot() throws {
         let base = alignedToHalfHour(Date())
         let lastSeen = base.addingTimeInterval(10 * 60)
@@ -389,8 +368,7 @@ final class LiveActivityContentStateTests: XCTestCase {
 
     // MARK: Helpers
 
-    /// Floors to a 30-minute boundary so thinning-slot boundaries in a test
-    /// don't depend on what time it happens to run.
+    /// Floors to a 30-minute boundary for deterministic timestamps.
     private func alignedToHalfHour(_ date: Date) -> Date {
         let slot: TimeInterval = 30 * 60
         return Date(
@@ -398,8 +376,8 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
     }
 
-    /// The 10- and 60-minute averages default to `pm2_5`, which makes the
-    /// crossover flat — set them apart to drive a trend.
+    /// The averages default to `pm2_5` (a flat crossover); set them apart
+    /// to drive a trend.
     private func makeSensor(
         pm2_5: Double,
         pm2_5_10minute: Double? = nil,
