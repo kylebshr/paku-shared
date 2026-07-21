@@ -38,7 +38,7 @@ public struct LiveActivityContentState: Codable, Hashable, Sendable {
     public var ls: Date?
 
     /// chart history, oldest→newest, last 24 hours, ≤ 49 points
-    /// (30-min buckets + current)
+    /// (half-hourly rows + current)
     public var h: [Point]?
 
     public init(
@@ -75,7 +75,11 @@ extension LiveActivityContentState {
         let aqi = sensor.aqiValue(period: .now, conversion: conversion)
 
         func aqiValue(for point: SensorHistoryResponse.DataPoint) -> Double? {
-            guard let pm2_5 = point.pm2_5 else {
+            // The window's peak where the server recorded one, so a spike
+            // between snapshots survives to the chart — matching the app's
+            // charts. Rows without one (older servers, sensors that weren't
+            // reporting) fall back to the sampled value.
+            guard let pm2_5 = point.pm2_5_max ?? point.pm2_5 else {
                 return nil
             }
 
@@ -120,35 +124,23 @@ extension LiveActivityContentState {
         case nil: nil
         }
 
-        // History: thin the last 24 hours to at most one point per 30
-        // minutes. This is a payload guard, not a grid — the client re-bins
-        // whatever cadence it's given — so its only jobs are staying under
-        // the ≤49-point / 4KB APNs cap and staying robust to input denser
-        // than the server's half-hourly snapshots.
+        // History: the last 24 hours of rows, oldest→newest, with the
+        // current reading closing out the series at its raw timestamp. The
+        // server writes one row per half hour, so a window holds at most 48
+        // rows — with the current point appended that sits exactly at the
+        // ≤49-point / 4KB APNs cap, and suffix() drops the oldest on the
+        // rare straddle.
         let cutoff = now.addingTimeInterval(-24 * 60 * 60)
-        let bucketLength: TimeInterval = 30 * 60
 
-        var buckets: [Int: [(timestamp: Date, value: Double)]] = [:]
-        for point in history where point.timestamp > cutoff && point.timestamp <= currentTimestamp {
-            guard let value = aqiValue(for: point) else { continue }
-            let bucket = Int(point.timestamp.timeIntervalSinceReferenceDate / bucketLength)
-            buckets[bucket, default: []].append((point.timestamp, value))
-        }
+        var points = history
+            .filter { $0.timestamp > cutoff && $0.timestamp <= currentTimestamp }
+            .sorted { $0.timestamp < $1.timestamp }
+            .compactMap { point in
+                aqiValue(for: point).map {
+                    Point(t: point.timestamp, v: Int16(clamping: Int($0.rounded())))
+                }
+            }
 
-        // Thinned points carry the bucket's *worst* reading, matching the
-        // app's health-index bins — averaging here would dilute a spike
-        // before the chart ever sees it.
-        var points = buckets.keys.sorted().map { key in
-            let entries = buckets[key]!
-            return Point(
-                t: entries.map(\.timestamp).max()!,
-                v: Int16(clamping: Int(entries.map(\.value).max()!.rounded()))
-            )
-        }
-
-        // The current reading closes out the series at its raw timestamp.
-        // A duplicate stamp against the newest thinned point is fine — the
-        // client bins them together. Capped at 49 points, oldest dropped.
         points.append(Point(t: currentTimestamp, v: Int16(clamping: Int(aqi.rounded()))))
 
         return LiveActivityContentState(

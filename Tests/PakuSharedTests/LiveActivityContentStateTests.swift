@@ -229,7 +229,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
 
         let points = try XCTUnwrap(state.h)
-        XCTAssertEqual(points.count, 3, "Two in-window buckets plus the synthetic current point")
+        XCTAssertEqual(points.count, 3, "Two in-window rows plus the synthetic current point")
         XCTAssertEqual(
             points.map(\.t),
             [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-2 * 60 * 60), lastSeen]
@@ -237,20 +237,17 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points.last?.v, Int16(sensor.aqiValue(period: .now, conversion: .none).rounded()))
     }
 
-    // Input denser than the server's cadence is thinned to one point per 30
-    // minutes, stamped with the newest timestamp in the slot and carrying
-    // the slot's *worst* reading — averaging would dilute a spike before the
-    // chart ever saw it.
-    func testHistoryThinsDenseInputKeepingWorstReading() throws {
-        // A slot-aligned base makes the thinning boundaries deterministic.
-        let base = alignedToHalfHour(Date())
-        let now = base
+    // A row carries its window's peak where the server recorded one, and
+    // the chart reads it over the sampled value — matching the app's charts
+    // — so a spike between snapshots isn't lost. Rows without one (older
+    // servers, sensors that weren't reporting) fall back to the sample.
+    func testHistoryPrefersRowPeakOverSampledValue() throws {
+        let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
         let history = [
-            makePoint(pm2_5: 10, timestamp: base.addingTimeInterval(-65 * 60)), // slot A
-            makePoint(pm2_5: 30, timestamp: base.addingTimeInterval(-61 * 60)), // slot A
-            makePoint(pm2_5: 20, timestamp: base.addingTimeInterval(-45 * 60)), // slot B
+            makePoint(pm2_5: 10, pm2_5_max: 30, timestamp: now.addingTimeInterval(-60 * 60)),
+            makePoint(pm2_5: 12, timestamp: now.addingTimeInterval(-30 * 60)),
         ]
 
         let state = LiveActivityContentState.build(
@@ -262,20 +259,15 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
 
         let points = try XCTUnwrap(state.h)
-        XCTAssertEqual(points.count, 3, "Two thinned slots plus the current point")
-        XCTAssertEqual(
-            points[0].t,
-            base.addingTimeInterval(-61 * 60),
-            "A thinned slot is stamped with its newest timestamp"
-        )
-
-        let slotAWorst = AQI.value(for: 30, humidity: nil, conversion: .none, location: .outdoors)
-        XCTAssertEqual(points[0].v, Int16(slotAWorst.rounded()), "A thinned slot carries its worst reading")
+        let peak = AQI.value(for: 30, humidity: nil, conversion: .none, location: .outdoors)
+        let sample = AQI.value(for: 12, humidity: nil, conversion: .none, location: .outdoors)
+        XCTAssertEqual(points[0].v, Int16(peak.rounded()), "A row with a recorded peak charts the peak")
+        XCTAssertEqual(points[1].v, Int16(sample.rounded()), "A row without one falls back to the sample")
     }
 
-    // A 24-hour window can straddle at most 49 half-hour slots; with the
-    // current point appended on top the builder must cap at 49, dropping
-    // the oldest — the ≤49-point APNs budget is why the thinning exists.
+    // A 24-hour window holds at most 48 half-hourly rows; with the current
+    // point appended on top the builder must cap at 49, dropping the
+    // oldest — the ≤49-point APNs budget.
     func testHistoryIsCappedAtFortyNinePointsDroppingOldest() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
@@ -298,11 +290,11 @@ final class LiveActivityContentStateTests: XCTestCase {
         let points = try XCTUnwrap(state.h)
         XCTAssertEqual(points.count, 49)
         XCTAssertEqual(points.last?.t, sensor.lastSeen, "The current point must survive the cap")
-        XCTAssertEqual(points.first?.t, now.addingTimeInterval(-30 - 1800 * 47), "The oldest bucket is dropped")
+        XCTAssertEqual(points.first?.t, now.addingTimeInterval(-30 - 1800 * 47), "The oldest row is dropped")
     }
 
     // The server stamps a history row for every cached sensor even after it
-    // stops reporting, so an offline sensor accrues buckets newer than its
+    // stops reporting, so an offline sensor accrues rows newer than its
     // lastSeen carrying frozen data. Those must be dropped so the points
     // (with the synthetic current point appended) stay chronologically
     // ascending.
@@ -330,7 +322,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(
             points.map(\.t),
             [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-3 * 60 * 60), lastSeen],
-            "Buckets newer than lastSeen are dropped; the synthetic point comes last"
+            "Rows newer than lastSeen are dropped; the synthetic point comes last"
         )
         XCTAssertEqual(
             points.map(\.t),
@@ -341,7 +333,7 @@ final class LiveActivityContentStateTests: XCTestCase {
 
     // The current point is appended at its raw timestamp with no collision
     // pass, so it can share a slot — even an exact timestamp — with the
-    // newest thinned point. That's fine: the client re-bins, and the only
+    // newest history row. That is fine: the client re-bins, and the only
     // hard requirement is that points never go backwards.
     func testCurrentPointCoexistsWithARowSharingItsSlot() throws {
         let base = alignedToHalfHour(Date())
@@ -452,11 +444,12 @@ final class LiveActivityContentStateTests: XCTestCase {
         ))
     }
 
-    private func makePoint(pm2_5: Double?, timestamp: Date) -> SensorHistoryResponse.DataPoint {
+    private func makePoint(pm2_5: Double?, pm2_5_max: Double? = nil, timestamp: Date) -> SensorHistoryResponse.DataPoint {
         SensorHistoryResponse.DataPoint(
             timestamp: timestamp,
             pm1_0: nil,
             pm2_5: pm2_5,
+            pm2_5_max: pm2_5_max,
             pm10_0: nil,
             humidity: nil,
             temperature: nil,
