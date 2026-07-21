@@ -95,26 +95,25 @@ extension LiveActivityContentState {
         // that's stopped reporting — so the same bound drops those too.
         let currentTimestamp = min(sensor.lastSeen, now)
 
-        // Trend: the slope of the last hour of readings, anchored by the
-        // current reading. Shared with the app's widget/watch arrows so
-        // every surface classifies the same readings the same way. Under 15
-        // minutes of span there's too little signal — leave `t` unset.
-        let lookback = now.addingTimeInterval(-60 * 60)
-        var trendSamples: [(date: Date, value: Double)] = history.compactMap { point in
-            guard point.timestamp > lookback, point.timestamp <= currentTimestamp,
-                  let value = aqiValue(for: point)
-            else {
-                return nil
-            }
-
-            return (date: point.timestamp, value: value)
+        // Trend: the sensor's own 10-minute average crossed against its
+        // 60-minute one. Both come off the sensor itself, computed from
+        // readings every couple of minutes, so this reacts to a spike in
+        // minutes where the 30-minute history rows would take half an hour
+        // — and it needs no history at all, so an arrow still renders when
+        // the history query comes back empty. Shared with the app's widget
+        // and watch arrows so every surface agrees for the same sensor.
+        // A quiet sensor's averages are frozen; nothing to report.
+        let direction: TrendDirection? = if now.timeIntervalSince(sensor.lastSeen) > TrendDirection.stalenessLimit {
+            nil
+        } else {
+            .between(
+                fast: sensor.aqiValue(period: .tenMinutes, conversion: conversion),
+                slow: sensor.aqiValue(period: .oneHour, conversion: conversion),
+                deadband: TrendDeadband.aqi
+            )
         }
-        trendSamples.append((date: currentTimestamp, value: aqi))
 
-        let trend: Int? = switch TrendDirection.of(
-            samples: trendSamples,
-            deadbandPerHour: trendDeadbandAQIPerHour
-        ) {
+        let trend: Int? = switch direction {
         case .up: 1
         case .flat: 0
         case .down: -1
@@ -163,7 +162,3 @@ extension LiveActivityContentState {
     }
 }
 
-/// AQI change per hour below which movement reads as sensor jitter rather
-/// than a trend. Mirrors the app's `.airQuality` deadband so a Live
-/// Activity's arrow agrees with the widget's for the same sensor.
-private let trendDeadbandAQIPerHour: Double = 4

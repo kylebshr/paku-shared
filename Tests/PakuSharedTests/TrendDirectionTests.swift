@@ -64,6 +64,29 @@ final class TrendDirectionTests: XCTestCase {
         )
     }
 
+    // MARK: Fast-vs-slow crossover
+
+    func testCrossoverClassifiesAgainstDeadband() {
+        XCTAssertEqual(.up, TrendDirection.between(fast: 40, slow: 20, deadband: 3))
+        XCTAssertEqual(.down, TrendDirection.between(fast: 20, slow: 40, deadband: 3))
+        XCTAssertEqual(.flat, TrendDirection.between(fast: 21, slow: 20, deadband: 3))
+    }
+
+    /// The deadband is exclusive on both sides, so a difference sitting
+    /// exactly on it reads as movement rather than flapping on rounding.
+    func testCrossoverAtExactlyTheDeadbandIsMovement() {
+        XCTAssertEqual(.up, TrendDirection.between(fast: 23, slow: 20, deadband: 3))
+        XCTAssertEqual(.down, TrendDirection.between(fast: 17, slow: 20, deadband: 3))
+    }
+
+    /// The whole point of the crossover: it reacts to a spike inside the
+    /// fast window, where a slope over 30-minute history rows could not.
+    func testCrossoverCatchesASpikeTheSlowAverageHasBarelyFelt() {
+        // A sharp rise in the last ten minutes has moved the hour's average
+        // only slightly — the crossover still calls it rising.
+        XCTAssertEqual(.up, TrendDirection.between(fast: 85, slow: 26, deadband: 3))
+    }
+
     /// The deadband is per-kind precisely because scales differ: the same
     /// climb that's a trend on AQHI's 1–11 scale is noise on VOC's 0–1500.
     func testDeadbandScalesWithKind() {

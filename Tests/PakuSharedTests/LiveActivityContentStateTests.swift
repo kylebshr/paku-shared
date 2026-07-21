@@ -114,107 +114,98 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(skewedState.h?.last?.t, now)
     }
 
-    func testTrendIsNilWithoutRecentHistory() throws {
+    // The trend no longer reads history at all: it crosses the sensor's own
+    // 10-minute average against its 60-minute one, so an arrow renders even
+    // when the history query comes back empty.
+    func testTrendIgnoresHistoryEntirely() throws {
         let now = Date()
-        let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
+        let sensor = try makeSensor(pm2_5: 20, pm2_5_10minute: 40, pm2_5_60minute: 20, lastSeen: now)
 
-        // A point outside the one-hour lookback contributes to the chart but
-        // not the trend.
+        let withoutHistory = LiveActivityContentState.build(
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
+        )
+        // Steeply falling rows — under the old slope rule this drove the
+        // arrow down; now it has no say.
+        let fallingRows: [SensorHistoryResponse.DataPoint] = (0..<4).map { index in
+            let value: Double = 80 - Double(index) * 20
+            let age: TimeInterval = -1800 * Double(4 - index)
+            return makePoint(pm2_5: value, timestamp: now.addingTimeInterval(age))
+        }
+
+        let withContraryHistory = LiveActivityContentState.build(
+            sensor: sensor, conversion: .none, distance: nil, history: fallingRows, now: now
+        )
+
+        XCTAssertEqual(withoutHistory.t, 1)
+        XCTAssertEqual(withContraryHistory.t, 1, "History must not sway the crossover")
+    }
+
+    // A sensor quiet for over an hour has frozen averages, so a crossover
+    // between them describes nothing current.
+    func testTrendIsNilForStaleSensor() throws {
+        let now = Date()
+        let sensor = try makeSensor(
+            pm2_5: 20, pm2_5_10minute: 40, pm2_5_60minute: 20,
+            lastSeen: now.addingTimeInterval(-90 * 60)
+        )
+
         let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [makePoint(pm2_5: 20, timestamp: now.addingTimeInterval(-2 * 60 * 60))],
-            now: now
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
 
         XCTAssertNil(state.t)
     }
 
-    // Under 15 minutes of span there's too little signal to fit a slope,
-    // however large the jump — `t` is omitted rather than guessed.
-    func testTrendIsNilWhenReadingsSpanUnderFifteenMinutes() throws {
-        let now = Date()
-        let sensor = try makeSensor(pm2_5: 90, lastSeen: now)
-
-        let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [makePoint(pm2_5: 5, timestamp: now.addingTimeInterval(-4 * 60))],
-            now: now
-        )
-
-        XCTAssertNil(state.t)
-    }
-
-    // The old rule compared Int-truncated values against the window mean, so
-    // a sub-unit jiggle straddling an integer rendered an arrow. The fitted
-    // slope measures the actual rate against a 4 AQI/hour deadband.
+    // The old rule compared Int-truncated values, so a sub-unit difference
+    // straddling an integer rendered an arrow. The deadband is a real level
+    // difference now — 3 AQI.
     func testTrendFlatForIntegerBoundaryJitter() throws {
         let now = Date()
-        // AQI is ~1:1 with pm2.5 down here, so these stay inside the band.
-        let sensor = try makeSensor(pm2_5: 11.1, lastSeen: now)
+        // ~1:1 with AQI down here, so the gap stays inside the deadband.
+        let sensor = try makeSensor(
+            pm2_5: 11.1, pm2_5_10minute: 11.1, pm2_5_60minute: 10.9, lastSeen: now
+        )
 
         let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [
-                makePoint(pm2_5: 10.9, timestamp: now.addingTimeInterval(-45 * 60)),
-                makePoint(pm2_5: 11.1, timestamp: now.addingTimeInterval(-30 * 60)),
-                makePoint(pm2_5: 10.9, timestamp: now.addingTimeInterval(-15 * 60)),
-            ],
-            now: now
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
 
         XCTAssertEqual(state.t, 0)
     }
 
-    func testTrendUpWhenSlopeExceedsDeadband() throws {
+    func testTrendUpWhenFastAverageLeadsSlow() throws {
         let now = Date()
-        let sensor = try makeSensor(pm2_5: 30, lastSeen: now)
+        let sensor = try makeSensor(pm2_5: 40, pm2_5_10minute: 40, pm2_5_60minute: 10, lastSeen: now)
 
         let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [makePoint(pm2_5: 10, timestamp: now.addingTimeInterval(-30 * 60))],
-            now: now
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
 
         XCTAssertEqual(state.t, 1)
     }
 
-    func testTrendDownWhenSlopeExceedsDeadband() throws {
+    func testTrendDownWhenFastAverageTrailsSlow() throws {
         let now = Date()
-        let sensor = try makeSensor(pm2_5: 10, lastSeen: now)
+        let sensor = try makeSensor(pm2_5: 10, pm2_5_10minute: 10, pm2_5_60minute: 40, lastSeen: now)
 
         let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [makePoint(pm2_5: 30, timestamp: now.addingTimeInterval(-30 * 60))],
-            now: now
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
 
         XCTAssertEqual(state.t, -1)
     }
 
-    func testTrendFlatWhenReadingsAreLevel() throws {
+    func testTrendFlatWhenAveragesAgree() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
         let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: [makePoint(pm2_5: 20, timestamp: now.addingTimeInterval(-30 * 60))],
-            now: now
+            sensor: sensor, conversion: .none, distance: nil, history: [], now: now
         )
 
         XCTAssertEqual(state.t, 0)
     }
+
 
     // History is the last 24 hours oldest→newest plus the current reading
     // stamped at the sensor's raw lastSeen.
@@ -400,8 +391,8 @@ final class LiveActivityContentStateTests: XCTestCase {
             now: now
         )
 
-        XCTAssertEqual(state.h?.count, 1, "Only the synthetic current point")
-        XCTAssertNil(state.t, "A reading-less point can't contribute to the trend")
+        XCTAssertEqual(state.h?.count, 1, "Only the current point")
+        XCTAssertEqual(state.t, 0, "The trend comes off the sensor, not the reading-less row")
     }
 
     // MARK: Helpers
@@ -415,7 +406,27 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
     }
 
-    private func makeSensor(pm2_5: Double, lastSeen: Date) throws -> Sensor {
+    /// The 10- and 60-minute averages default to `pm2_5`, which makes the
+    /// crossover flat — set them apart to drive a trend.
+    private func makeSensor(
+        pm2_5: Double,
+        pm2_5_10minute: Double? = nil,
+        pm2_5_60minute: Double? = nil,
+        lastSeen: Date
+    ) throws -> Sensor {
+        let tenMinutes = pm2_5_10minute ?? pm2_5
+        let sixtyMinutes = pm2_5_60minute ?? pm2_5
+        return try makeSensor(
+            pm2_5: pm2_5, tenMinutes: tenMinutes, sixtyMinutes: sixtyMinutes, lastSeen: lastSeen
+        )
+    }
+
+    private func makeSensor(
+        pm2_5: Double,
+        tenMinutes: Double,
+        sixtyMinutes: Double,
+        lastSeen: Date
+    ) throws -> Sensor {
         try Sensor(response: SensorResponse(
             id: 12345,
             name: "Test Sensor",
@@ -429,9 +440,9 @@ final class LiveActivityContentStateTests: XCTestCase {
             temperature: nil,
             pm2_5: pm2_5,
             pm2_5_cf_1: pm2_5,
-            pm2_5_10minute: pm2_5,
+            pm2_5_10minute: tenMinutes,
             pm2_5_30minute: pm2_5,
-            pm2_5_60minute: pm2_5,
+            pm2_5_60minute: sixtyMinutes,
             pm2_5_6hour: pm2_5,
             pm2_5_24hour: pm2_5,
             pm2_5_1week: pm2_5,
