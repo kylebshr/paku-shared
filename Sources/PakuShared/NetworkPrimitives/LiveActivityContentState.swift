@@ -38,7 +38,7 @@ public struct LiveActivityContentState: Codable, Hashable, Sendable {
     public var ls: Date?
 
     /// chart history, oldest→newest, last 24 hours, ≤ 49 points
-    /// (30-min buckets + current)
+    /// (half-hourly rows + current)
     public var h: [Point]?
 
     public init(
@@ -59,12 +59,9 @@ public struct LiveActivityContentState: Codable, Hashable, Sendable {
 }
 
 extension LiveActivityContentState {
-    /// Builds the content state from a sensor's current reading, the user's
-    /// conversion, the last reported distance, and the sensor's history.
-    /// Shared by the app (the initial request, local foreground refreshes,
-    /// and widget previews) and the server's push job, so both sides
-    /// construct identical states. Pure (the clock is a parameter), so the
-    /// trend and history-window rules are unit-testable.
+    /// Builds the content state. Shared by the app and the server's push
+    /// job so both construct identical states; pure (the clock is a
+    /// parameter) for testability.
     public static func build(
         sensor: Sensor,
         conversion: AQIConversion,
@@ -87,62 +84,48 @@ extension LiveActivityContentState {
             )
         }
 
-        // Trend: the current reading vs the average of the last hour of
-        // history. No points in the last hour → unknown.
-        let lookback = now.addingTimeInterval(-60 * 60)
-        let recentValues = history
-            .filter { $0.timestamp > lookback }
-            .compactMap(aqiValue(for:))
+        // The current reading is stamped at lastSeen, clamped so a
+        // clock-skewed sensor can't push it past `now`. The same bound drops
+        // history rows newer than lastSeen — the server stamps rows with the
+        // crawl time even for a sensor that's stopped reporting, so those
+        // carry frozen data.
+        let currentTimestamp = min(sensor.lastSeen, now)
 
-        let trend: Int?
-        if recentValues.isEmpty {
-            trend = nil
+        // Trend: the sensor's own fast average crossed against its slow
+        // one — reacts to a spike in minutes and needs no history, so an
+        // arrow renders even when the history query comes back empty.
+        let direction: TrendDirection? = if now.timeIntervalSince(sensor.lastSeen) > TrendDirection.stalenessLimit {
+            nil
         } else {
-            let average = recentValues.average()
-            if Int(average) == Int(aqi) {
-                trend = 0
-            } else if aqi > average {
-                trend = 1
-            } else {
-                trend = -1
-            }
-        }
-
-        // History: bin the last 24 hours into the 30-minute cadence the
-        // server's snapshots sit on — on already-half-hour-stamped rows this
-        // degenerates to the same points, and it keeps the function robust
-        // to arbitrary input. Buckets are clamped to lastSeen: the server
-        // stamps history rows with the crawl time even for a sensor that's
-        // stopped reporting, so an offline sensor accrues buckets newer than
-        // lastSeen carrying frozen data — dropping them keeps the points
-        // ascending after the synthetic current point is appended.
-        let cutoff = now.addingTimeInterval(-24 * 60 * 60)
-        let bucketLength: TimeInterval = 30 * 60
-
-        var buckets: [Int: [(timestamp: Date, value: Double)]] = [:]
-        for point in history where point.timestamp > cutoff && point.timestamp <= sensor.lastSeen {
-            guard let value = aqiValue(for: point) else { continue }
-            let bucket = Int(point.timestamp.timeIntervalSinceReferenceDate / bucketLength)
-            buckets[bucket, default: []].append((point.timestamp, value))
-        }
-
-        var points = buckets.keys.sorted().map { key in
-            let entries = buckets[key]!
-            return Point(
-                t: entries.map(\.timestamp).max()!,
-                v: Int16(clamping: Int(entries.map(\.value).average().rounded()))
+            .between(
+                fast: sensor.aqiValue(period: .tenMinutes, conversion: conversion),
+                slow: sensor.aqiValue(period: .oneHour, conversion: conversion),
+                deadband: TrendDeadband.aqi
             )
         }
 
-        // Stamp the current reading on the same half-hour grid as the
-        // history so the final bar lines up with the others, and replace
-        // any bucket it collides with — appending at raw lastSeen can land
-        // minutes from the newest bucket, drawing two overlapping bars.
-        // Capped at 49 points (a 24-hour window straddles at most 49
-        // half-hour grid slots), dropping the oldest first.
-        let syntheticTimestamp = sensor.lastSeen.nearestHalfHour()
-        points.removeAll { $0.t >= syntheticTimestamp }
-        points.append(Point(t: syntheticTimestamp, v: Int16(clamping: Int(aqi.rounded()))))
+        let trend: Int? = switch direction {
+        case .up: 1
+        case .flat: 0
+        case .down: -1
+        case nil: nil
+        }
+
+        // History rows are half-hourly, so 24 hours plus the current point
+        // is at most 49 points — the APNs payload cap; suffix() drops the
+        // oldest on the rare straddle.
+        let cutoff = now.addingTimeInterval(-24 * 60 * 60)
+
+        var points = history
+            .filter { $0.timestamp > cutoff && $0.timestamp <= currentTimestamp }
+            .sorted { $0.timestamp < $1.timestamp }
+            .compactMap { point in
+                aqiValue(for: point).map {
+                    Point(t: point.timestamp, v: Int16(clamping: Int($0.rounded())))
+                }
+            }
+
+        points.append(Point(t: currentTimestamp, v: Int16(clamping: Int(aqi.rounded()))))
 
         return LiveActivityContentState(
             id: sensor.id,
@@ -155,19 +138,3 @@ extension LiveActivityContentState {
     }
 }
 
-extension Date {
-    /// The half-hour grid the history snapshots sit on; the content-state
-    /// builder aligns its synthetic current point to the same grid.
-    func nearestHalfHour() -> Date {
-        let precision: TimeInterval = 30 * 60
-        let seconds = (timeIntervalSinceReferenceDate / precision).rounded() * precision
-        return Date(timeIntervalSinceReferenceDate: seconds)
-    }
-}
-
-extension [Double] {
-    /// The arithmetic mean; callers guarantee a non-empty array.
-    func average() -> Double {
-        reduce(0, +) / Double(count)
-    }
-}
