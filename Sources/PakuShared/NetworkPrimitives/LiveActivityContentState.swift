@@ -72,9 +72,7 @@ extension LiveActivityContentState {
         let aqi = sensor.aqiValue(period: .now, conversion: conversion)
 
         func aqiValue(for point: SensorHistoryResponse.DataPoint) -> Double? {
-            // The window's peak where recorded, so spikes between snapshots
-            // survive to the chart — matching the app's charts.
-            guard let pm2_5 = point.pm2_5_max ?? point.pm2_5 else {
+            guard let pm2_5 = point.pm2_5 else {
                 return nil
             }
 

@@ -227,31 +227,6 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points.last?.v, Int16(sensor.aqiValue(period: .now, conversion: .none).rounded()))
     }
 
-    // Rows chart their recorded peak, falling back to the sampled value.
-    func testHistoryPrefersRowPeakOverSampledValue() throws {
-        let now = Date()
-        let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
-
-        let history = [
-            makePoint(pm2_5: 10, pm2_5_max: 30, timestamp: now.addingTimeInterval(-60 * 60)),
-            makePoint(pm2_5: 12, timestamp: now.addingTimeInterval(-30 * 60)),
-        ]
-
-        let state = LiveActivityContentState.build(
-            sensor: sensor,
-            conversion: .none,
-            distance: nil,
-            history: history,
-            now: now
-        )
-
-        let points = try XCTUnwrap(state.h)
-        let peak = AQI.value(for: 30, humidity: nil, conversion: .none, location: .outdoors)
-        let sample = AQI.value(for: 12, humidity: nil, conversion: .none, location: .outdoors)
-        XCTAssertEqual(points[0].v, Int16(peak.rounded()), "A row with a recorded peak charts the peak")
-        XCTAssertEqual(points[1].v, Int16(sample.rounded()), "A row without one falls back to the sample")
-    }
-
     // The ≤49-point APNs budget: cap, dropping the oldest.
     func testHistoryIsCappedAtFortyNinePointsDroppingOldest() throws {
         let now = Date()
@@ -422,12 +397,11 @@ final class LiveActivityContentStateTests: XCTestCase {
         ))
     }
 
-    private func makePoint(pm2_5: Double?, pm2_5_max: Double? = nil, timestamp: Date) -> SensorHistoryResponse.DataPoint {
+    private func makePoint(pm2_5: Double?, timestamp: Date) -> SensorHistoryResponse.DataPoint {
         SensorHistoryResponse.DataPoint(
             timestamp: timestamp,
             pm1_0: nil,
             pm2_5: pm2_5,
-            pm2_5_max: pm2_5_max,
             pm10_0: nil,
             humidity: nil,
             temperature: nil,
