@@ -87,62 +87,70 @@ extension LiveActivityContentState {
             )
         }
 
-        // Trend: the current reading vs the average of the last hour of
-        // history. No points in the last hour → unknown.
-        let lookback = now.addingTimeInterval(-60 * 60)
-        let recentValues = history
-            .filter { $0.timestamp > lookback }
-            .compactMap(aqiValue(for:))
+        // The current reading is stamped at lastSeen, never in the future:
+        // a clock-skewed sensor must not push the newest point past `now`,
+        // and everything older is clamped to it so the points stay
+        // ascending. History rows newer than lastSeen carry frozen data —
+        // the server stamps rows with the crawl time even for a sensor
+        // that's stopped reporting — so the same bound drops those too.
+        let currentTimestamp = min(sensor.lastSeen, now)
 
-        let trend: Int?
-        if recentValues.isEmpty {
-            trend = nil
-        } else {
-            let average = recentValues.average()
-            if Int(average) == Int(aqi) {
-                trend = 0
-            } else if aqi > average {
-                trend = 1
-            } else {
-                trend = -1
+        // Trend: the slope of the last hour of readings, anchored by the
+        // current reading. Shared with the app's widget/watch arrows so
+        // every surface classifies the same readings the same way. Under 15
+        // minutes of span there's too little signal — leave `t` unset.
+        let lookback = now.addingTimeInterval(-60 * 60)
+        var trendSamples: [(date: Date, value: Double)] = history.compactMap { point in
+            guard point.timestamp > lookback, point.timestamp <= currentTimestamp,
+                  let value = aqiValue(for: point)
+            else {
+                return nil
             }
+
+            return (date: point.timestamp, value: value)
+        }
+        trendSamples.append((date: currentTimestamp, value: aqi))
+
+        let trend: Int? = switch TrendDirection.of(
+            samples: trendSamples,
+            deadbandPerHour: trendDeadbandAQIPerHour
+        ) {
+        case .up: 1
+        case .flat: 0
+        case .down: -1
+        case nil: nil
         }
 
-        // History: bin the last 24 hours into the 30-minute cadence the
-        // server's snapshots sit on — on already-half-hour-stamped rows this
-        // degenerates to the same points, and it keeps the function robust
-        // to arbitrary input. Buckets are clamped to lastSeen: the server
-        // stamps history rows with the crawl time even for a sensor that's
-        // stopped reporting, so an offline sensor accrues buckets newer than
-        // lastSeen carrying frozen data — dropping them keeps the points
-        // ascending after the synthetic current point is appended.
+        // History: thin the last 24 hours to at most one point per 30
+        // minutes. This is a payload guard, not a grid — the client re-bins
+        // whatever cadence it's given — so its only jobs are staying under
+        // the ≤49-point / 4KB APNs cap and staying robust to input denser
+        // than the server's half-hourly snapshots.
         let cutoff = now.addingTimeInterval(-24 * 60 * 60)
         let bucketLength: TimeInterval = 30 * 60
 
         var buckets: [Int: [(timestamp: Date, value: Double)]] = [:]
-        for point in history where point.timestamp > cutoff && point.timestamp <= sensor.lastSeen {
+        for point in history where point.timestamp > cutoff && point.timestamp <= currentTimestamp {
             guard let value = aqiValue(for: point) else { continue }
             let bucket = Int(point.timestamp.timeIntervalSinceReferenceDate / bucketLength)
             buckets[bucket, default: []].append((point.timestamp, value))
         }
 
+        // Thinned points carry the bucket's *worst* reading, matching the
+        // app's health-index bins — averaging here would dilute a spike
+        // before the chart ever sees it.
         var points = buckets.keys.sorted().map { key in
             let entries = buckets[key]!
             return Point(
                 t: entries.map(\.timestamp).max()!,
-                v: Int16(clamping: Int(entries.map(\.value).average().rounded()))
+                v: Int16(clamping: Int(entries.map(\.value).max()!.rounded()))
             )
         }
 
-        // Stamp the current reading on the same half-hour grid as the
-        // history so the final bar lines up with the others, and replace
-        // any bucket it collides with — appending at raw lastSeen can land
-        // minutes from the newest bucket, drawing two overlapping bars.
-        // Capped at 49 points (a 24-hour window straddles at most 49
-        // half-hour grid slots), dropping the oldest first.
-        let syntheticTimestamp = sensor.lastSeen.nearestHalfHour()
-        points.removeAll { $0.t >= syntheticTimestamp }
-        points.append(Point(t: syntheticTimestamp, v: Int16(clamping: Int(aqi.rounded()))))
+        // The current reading closes out the series at its raw timestamp.
+        // A duplicate stamp against the newest thinned point is fine — the
+        // client bins them together. Capped at 49 points, oldest dropped.
+        points.append(Point(t: currentTimestamp, v: Int16(clamping: Int(aqi.rounded()))))
 
         return LiveActivityContentState(
             id: sensor.id,
@@ -155,19 +163,7 @@ extension LiveActivityContentState {
     }
 }
 
-extension Date {
-    /// The half-hour grid the history snapshots sit on; the content-state
-    /// builder aligns its synthetic current point to the same grid.
-    func nearestHalfHour() -> Date {
-        let precision: TimeInterval = 30 * 60
-        let seconds = (timeIntervalSinceReferenceDate / precision).rounded() * precision
-        return Date(timeIntervalSinceReferenceDate: seconds)
-    }
-}
-
-extension [Double] {
-    /// The arithmetic mean; callers guarantee a non-empty array.
-    func average() -> Double {
-        reduce(0, +) / Double(count)
-    }
-}
+/// AQI change per hour below which movement reads as sensor jitter rather
+/// than a trend. Mirrors the app's `.airQuality` deadband so a Live
+/// Activity's arrow agrees with the widget's for the same sensor.
+private let trendDeadbandAQIPerHour: Double = 4

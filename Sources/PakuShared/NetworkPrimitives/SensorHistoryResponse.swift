@@ -12,6 +12,13 @@ public struct SensorHistoryResponse: Codable, Sendable {
         public var timestamp: Date
         public var pm1_0: Double?
         public var pm2_5: Double?
+
+        /// The highest reading observed during the row's window, rather than
+        /// the single value sampled at its end. Health-index charts prefer
+        /// this so a short spike between snapshots survives to the bin.
+        /// Nil on rows written before the server tracked it.
+        public var pm2_5_max: Double?
+
         public var pm10_0: Double?
         public var humidity: Int?
         public var temperature: Int?
@@ -22,6 +29,7 @@ public struct SensorHistoryResponse: Codable, Sendable {
             timestamp: Date,
             pm1_0: Double?,
             pm2_5: Double?,
+            pm2_5_max: Double? = nil,
             pm10_0: Double?,
             humidity: Double?,
             temperature: Double?,
@@ -31,6 +39,7 @@ public struct SensorHistoryResponse: Codable, Sendable {
             self.timestamp = timestamp
             self.pm1_0 = pm1_0
             self.pm2_5 = pm2_5
+            self.pm2_5_max = pm2_5_max
             self.pm10_0 = pm10_0
             self.humidity = humidity.map(Int.init)
             self.temperature = temperature.map(Int.init)

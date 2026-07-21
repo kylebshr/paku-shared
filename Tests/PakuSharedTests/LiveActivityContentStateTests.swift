@@ -92,6 +92,28 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(state.ls, sensor.lastSeen)
     }
 
+    // The current point is stamped at lastSeen and must never sit in the
+    // future — the old builder snapped it to the *nearest* half hour, which
+    // rounded up to 15 minutes ahead of the clock.
+    func testSyntheticPointNeverExceedsNow() throws {
+        let now = Date()
+
+        // lastSeen a few minutes back: the point lands on it exactly, with
+        // no rounding up to the next half-hour slot.
+        let recent = try makeSensor(pm2_5: 20, lastSeen: now.addingTimeInterval(-4 * 60))
+        let recentState = LiveActivityContentState.build(
+            sensor: recent, conversion: .none, distance: nil, history: [], now: now
+        )
+        XCTAssertEqual(recentState.h?.last?.t, recent.lastSeen)
+
+        // A clock-skewed sensor reporting from the future is clamped to now.
+        let skewed = try makeSensor(pm2_5: 20, lastSeen: now.addingTimeInterval(10 * 60))
+        let skewedState = LiveActivityContentState.build(
+            sensor: skewed, conversion: .none, distance: nil, history: [], now: now
+        )
+        XCTAssertEqual(skewedState.h?.last?.t, now)
+    }
+
     func testTrendIsNilWithoutRecentHistory() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
@@ -109,7 +131,47 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertNil(state.t)
     }
 
-    func testTrendUpWhenCurrentAboveRecentAverage() throws {
+    // Under 15 minutes of span there's too little signal to fit a slope,
+    // however large the jump — `t` is omitted rather than guessed.
+    func testTrendIsNilWhenReadingsSpanUnderFifteenMinutes() throws {
+        let now = Date()
+        let sensor = try makeSensor(pm2_5: 90, lastSeen: now)
+
+        let state = LiveActivityContentState.build(
+            sensor: sensor,
+            conversion: .none,
+            distance: nil,
+            history: [makePoint(pm2_5: 5, timestamp: now.addingTimeInterval(-4 * 60))],
+            now: now
+        )
+
+        XCTAssertNil(state.t)
+    }
+
+    // The old rule compared Int-truncated values against the window mean, so
+    // a sub-unit jiggle straddling an integer rendered an arrow. The fitted
+    // slope measures the actual rate against a 4 AQI/hour deadband.
+    func testTrendFlatForIntegerBoundaryJitter() throws {
+        let now = Date()
+        // AQI is ~1:1 with pm2.5 down here, so these stay inside the band.
+        let sensor = try makeSensor(pm2_5: 11.1, lastSeen: now)
+
+        let state = LiveActivityContentState.build(
+            sensor: sensor,
+            conversion: .none,
+            distance: nil,
+            history: [
+                makePoint(pm2_5: 10.9, timestamp: now.addingTimeInterval(-45 * 60)),
+                makePoint(pm2_5: 11.1, timestamp: now.addingTimeInterval(-30 * 60)),
+                makePoint(pm2_5: 10.9, timestamp: now.addingTimeInterval(-15 * 60)),
+            ],
+            now: now
+        )
+
+        XCTAssertEqual(state.t, 0)
+    }
+
+    func testTrendUpWhenSlopeExceedsDeadband() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 30, lastSeen: now)
 
@@ -124,7 +186,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(state.t, 1)
     }
 
-    func testTrendDownWhenCurrentBelowRecentAverage() throws {
+    func testTrendDownWhenSlopeExceedsDeadband() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 10, lastSeen: now)
 
@@ -139,7 +201,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(state.t, -1)
     }
 
-    func testTrendFlatWhenCurrentMatchesRecentAverage() throws {
+    func testTrendFlatWhenReadingsAreLevel() throws {
         let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
@@ -154,8 +216,8 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(state.t, 0)
     }
 
-    // History is the last 24 hours oldest→newest plus a synthetic current
-    // point stamped with the sensor's lastSeen rounded to the half-hour grid.
+    // History is the last 24 hours oldest→newest plus the current reading
+    // stamped at the sensor's raw lastSeen.
     func testHistoryWindowOrderingAndSyntheticCurrentPoint() throws {
         let now = Date()
         let lastSeen = now.addingTimeInterval(-90)
@@ -179,17 +241,18 @@ final class LiveActivityContentStateTests: XCTestCase {
         XCTAssertEqual(points.count, 3, "Two in-window buckets plus the synthetic current point")
         XCTAssertEqual(
             points.map(\.t),
-            [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-2 * 60 * 60), lastSeen.nearestHalfHour()]
+            [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-2 * 60 * 60), lastSeen]
         )
         XCTAssertEqual(points.last?.v, Int16(sensor.aqiValue(period: .now, conversion: .none).rounded()))
     }
 
-    // Points sharing a half-hour grid slot merge into one bucket carrying
-    // the average reading, stamped with the newest timestamp in the slot —
-    // the builder must be robust to input denser than the server's cadence.
-    func testHistoryBinsDenseInputIntoHalfHourBuckets() throws {
-        // A grid-aligned base makes the bucket boundaries deterministic.
-        let base = Date().nearestHalfHour()
+    // Input denser than the server's cadence is thinned to one point per 30
+    // minutes, stamped with the newest timestamp in the slot and carrying
+    // the slot's *worst* reading — averaging would dilute a spike before the
+    // chart ever saw it.
+    func testHistoryThinsDenseInputKeepingWorstReading() throws {
+        // A slot-aligned base makes the thinning boundaries deterministic.
+        let base = alignedToHalfHour(Date())
         let now = base
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
@@ -208,32 +271,26 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
 
         let points = try XCTUnwrap(state.h)
-        XCTAssertEqual(points.count, 3, "Two merged buckets plus the synthetic current point")
+        XCTAssertEqual(points.count, 3, "Two thinned slots plus the current point")
         XCTAssertEqual(
             points[0].t,
             base.addingTimeInterval(-61 * 60),
-            "A merged bucket is stamped with its newest timestamp"
+            "A thinned slot is stamped with its newest timestamp"
         )
 
-        let slotAAverage = [
-            AQI.value(for: 10, humidity: nil, conversion: .none, location: .outdoors),
-            AQI.value(for: 30, humidity: nil, conversion: .none, location: .outdoors),
-        ].average()
-        XCTAssertEqual(points[0].v, Int16(slotAAverage.rounded()), "A merged bucket carries the average reading")
+        let slotAWorst = AQI.value(for: 30, humidity: nil, conversion: .none, location: .outdoors)
+        XCTAssertEqual(points[0].v, Int16(slotAWorst.rounded()), "A thinned slot carries its worst reading")
     }
 
-    // A 24-hour window can straddle at most 49 half-hour grid slots; with
-    // the synthetic point appended on top the builder must cap at 49,
-    // dropping the oldest.
+    // A 24-hour window can straddle at most 49 half-hour slots; with the
+    // current point appended on top the builder must cap at 49, dropping
+    // the oldest — the ≤49-point APNs budget is why the thinning exists.
     func testHistoryIsCappedAtFortyNinePointsDroppingOldest() throws {
-        // lastSeen sits mid-slot so the window straddles 49 distinct slots
-        // and the synthetic point rounds up past every bucket.
-        let base = Date().nearestHalfHour()
-        let now = base.addingTimeInterval(15 * 60)
+        let now = Date()
         let sensor = try makeSensor(pm2_5: 20, lastSeen: now)
 
-        // 48 buckets marching back from just before lastSeen, plus one in
-        // the partial slot at the window's old edge: 49 buckets in-window.
+        // 48 slots marching back from just before lastSeen, plus one in
+        // the partial slot at the window's old edge: 49 slots in-window.
         var history = (0..<48).map { index in
             makePoint(pm2_5: 20, timestamp: now.addingTimeInterval(TimeInterval(-30 - 1800 * index)))
         }
@@ -249,7 +306,7 @@ final class LiveActivityContentStateTests: XCTestCase {
 
         let points = try XCTUnwrap(state.h)
         XCTAssertEqual(points.count, 49)
-        XCTAssertEqual(points.last?.t, sensor.lastSeen.nearestHalfHour(), "The synthetic point must survive the cap")
+        XCTAssertEqual(points.last?.t, sensor.lastSeen, "The current point must survive the cap")
         XCTAssertEqual(points.first?.t, now.addingTimeInterval(-30 - 1800 * 47), "The oldest bucket is dropped")
     }
 
@@ -281,7 +338,7 @@ final class LiveActivityContentStateTests: XCTestCase {
         let points = try XCTUnwrap(state.h)
         XCTAssertEqual(
             points.map(\.t),
-            [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-3 * 60 * 60), lastSeen.nearestHalfHour()],
+            [now.addingTimeInterval(-4 * 60 * 60), now.addingTimeInterval(-3 * 60 * 60), lastSeen],
             "Buckets newer than lastSeen are dropped; the synthetic point comes last"
         )
         XCTAssertEqual(
@@ -291,19 +348,19 @@ final class LiveActivityContentStateTests: XCTestCase {
         )
     }
 
-    // The synthetic point lands on the half-hour grid; a bucket already
-    // stamped in that slot is superseded by the current reading, so the
-    // chart never renders two overlapping trailing bars.
-    func testSyntheticPointAlignsToGridAndReplacesCollidingBucket() throws {
-        // A grid-aligned base makes the rounding deterministic.
-        let base = Date().nearestHalfHour()
-        let lastSeen = base.addingTimeInterval(10 * 60) // rounds back down to base
-        let now = lastSeen
+    // The current point is appended at its raw timestamp with no collision
+    // pass, so it can share a slot — even an exact timestamp — with the
+    // newest thinned point. That's fine: the client re-bins, and the only
+    // hard requirement is that points never go backwards.
+    func testCurrentPointCoexistsWithARowSharingItsSlot() throws {
+        let base = alignedToHalfHour(Date())
+        let lastSeen = base.addingTimeInterval(10 * 60)
         let sensor = try makeSensor(pm2_5: 20, lastSeen: lastSeen)
 
         let history = [
             makePoint(pm2_5: 12, timestamp: base.addingTimeInterval(-30 * 60)),
-            makePoint(pm2_5: 10, timestamp: base), // shares lastSeen's grid slot
+            makePoint(pm2_5: 10, timestamp: base), // shares lastSeen's slot
+            makePoint(pm2_5: 10, timestamp: lastSeen), // exactly lastSeen
         ]
 
         let state = LiveActivityContentState.build(
@@ -311,27 +368,21 @@ final class LiveActivityContentStateTests: XCTestCase {
             conversion: .none,
             distance: nil,
             history: history,
-            now: now
+            now: lastSeen
         )
 
         let points = try XCTUnwrap(state.h)
         XCTAssertEqual(
             points.map(\.t),
-            [base.addingTimeInterval(-30 * 60), base],
-            "Exactly one trailing point, on the grid — the colliding bucket is replaced"
+            points.map(\.t).sorted(),
+            "Points must never go backwards, duplicates included"
         )
+        XCTAssertEqual(points.last?.t, lastSeen)
         XCTAssertEqual(
             points.last?.v,
             Int16(sensor.aqiValue(period: .now, conversion: .none).rounded()),
-            "The trailing point carries the current reading, not the superseded bucket"
+            "The trailing point carries the current reading"
         )
-        for (older, newer) in zip(points, points.dropFirst()) {
-            XCTAssertGreaterThanOrEqual(
-                newer.t.timeIntervalSince(older.t),
-                30 * 60,
-                "Points must sit at least one bucket apart"
-            )
-        }
     }
 
     func testHistorySkipsPointsWithoutReadings() throws {
@@ -354,6 +405,15 @@ final class LiveActivityContentStateTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// Floors to a 30-minute boundary so thinning-slot boundaries in a test
+    /// don't depend on what time it happens to run.
+    private func alignedToHalfHour(_ date: Date) -> Date {
+        let slot: TimeInterval = 30 * 60
+        return Date(
+            timeIntervalSinceReferenceDate: (date.timeIntervalSinceReferenceDate / slot).rounded(.down) * slot
+        )
+    }
 
     private func makeSensor(pm2_5: Double, lastSeen: Date) throws -> Sensor {
         try Sensor(response: SensorResponse(
