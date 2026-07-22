@@ -23,6 +23,10 @@ public struct SensorResponse: Codable, Sendable {
     public let pm10_0: Double?
     public let voc: Double?
 
+    /// Whether PurpleAir lists the sensor on the public map. nil when the
+    /// crawl didn't report it (older servers, or the field wasn't fetched).
+    public let isPublic: Bool?
+
     public init(
         id: Int,
         name: String,
@@ -44,7 +48,8 @@ public struct SensorResponse: Codable, Sendable {
         pm2_5_1week: Double?,
         pm1_0: Double?,
         pm10_0: Double?,
-        voc: Double?
+        voc: Double?,
+        isPublic: Bool? = nil
     ) {
         self.id = id
         self.name = name
@@ -67,5 +72,6 @@ public struct SensorResponse: Codable, Sendable {
         self.pm1_0 = pm1_0
         self.pm10_0 = pm10_0
         self.voc = voc
+        self.isPublic = isPublic
     }
 }
