@@ -26,6 +26,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
     public let pm1_0: Double?
     public let pm10_0: Double?
     public let voc: Double?
+    public let channelFlags: ChannelFlags?
     public let isPrivateSensor: Bool
 
     public init(response: SensorResponse, isPrivateSensor: Bool = false) throws {
@@ -63,6 +64,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         self.pm1_0 = response.pm1_0
         self.pm10_0 = response.pm10_0
         self.voc = response.voc
+        self.channelFlags = response.channelFlags
         self.isPrivateSensor = isPrivateSensor
     }
 
