@@ -1,5 +1,21 @@
 import Foundation
 
+/// Which of a PurpleAir sensor's two PM channels (A and B) PurpleAir has
+/// marked as downgraded — flagged as unreliable, automatically or by their
+/// staff. The server excludes downgraded channels from the readings it
+/// serves (like the PurpleAir map does); this reports what was excluded so
+/// the app can say so.
+public enum ChannelFlags: Int, Codable, Sendable {
+    case normal = 0
+    case aDowngraded = 1
+    case bDowngraded = 2
+    case bothDowngraded = 3
+
+    /// Whether any channel is downgraded: readings come from the one
+    /// healthy channel — or, with both downgraded, shouldn't be trusted.
+    public var hasDowngradedChannel: Bool { self != .normal }
+}
+
 public struct SensorResponse: Codable, Sendable {
     public let id: Int
     public let name: String
@@ -27,6 +43,10 @@ public struct SensorResponse: Codable, Sendable {
     /// crawl didn't report it (older servers, or the field wasn't fetched).
     public let isPublic: Bool?
 
+    /// Which PM channels PurpleAir has downgraded. nil when the crawl
+    /// didn't report it (older servers, or the field wasn't fetched).
+    public let channelFlags: ChannelFlags?
+
     public init(
         id: Int,
         name: String,
@@ -49,7 +69,8 @@ public struct SensorResponse: Codable, Sendable {
         pm1_0: Double?,
         pm10_0: Double?,
         voc: Double?,
-        isPublic: Bool? = nil
+        isPublic: Bool? = nil,
+        channelFlags: ChannelFlags? = nil
     ) {
         self.id = id
         self.name = name
@@ -73,5 +94,6 @@ public struct SensorResponse: Codable, Sendable {
         self.pm10_0 = pm10_0
         self.voc = voc
         self.isPublic = isPublic
+        self.channelFlags = channelFlags
     }
 }
