@@ -16,6 +16,19 @@ public enum ChannelFlags: Int, Codable, Sendable {
     public var hasDowngradedChannel: Bool { self != .normal }
 }
 
+/// Which PM channels the sensor's hardware has (PurpleAir's
+/// channel_state) — a hardware fact fixed at manufacture, unlike
+/// `ChannelFlags`, which reports PurpleAir's live judgement of those
+/// channels. Confidence only measures channel agreement on two-channel
+/// hardware (`.both`); single-channel devices (PA-I, Touch) are pinned at
+/// confidence 30 by PurpleAir, which isn't a warning signal.
+public enum ChannelState: Int, Codable, Sendable {
+    case noChannels = 0
+    case aOnly = 1
+    case bOnly = 2
+    case both = 3
+}
+
 public struct SensorResponse: Codable, Sendable {
     public let id: Int
     public let name: String
@@ -47,6 +60,10 @@ public struct SensorResponse: Codable, Sendable {
     /// didn't report it (older servers, or the field wasn't fetched).
     public let channelFlags: ChannelFlags?
 
+    /// Which PM channels the hardware has. nil when the crawl didn't
+    /// report it (older servers, or the field wasn't fetched).
+    public let channelState: ChannelState?
+
     public init(
         id: Int,
         name: String,
@@ -54,23 +71,24 @@ public struct SensorResponse: Codable, Sendable {
         longitude: Double,
         locationType: LocationType,
         lastSeen: Date,
-        altitude: Double?,
-        humidity: Double?,
-        confidence: Int?,
-        temperature: Double?,
-        pm2_5: Double?,
-        pm2_5_cf_1: Double?,
-        pm2_5_10minute: Double?,
-        pm2_5_30minute: Double?,
-        pm2_5_60minute: Double?,
-        pm2_5_6hour: Double?,
-        pm2_5_24hour: Double?,
-        pm2_5_1week: Double?,
-        pm1_0: Double?,
-        pm10_0: Double?,
-        voc: Double?,
+        altitude: Double? = nil,
+        humidity: Double? = nil,
+        confidence: Int? = nil,
+        temperature: Double? = nil,
+        pm2_5: Double? = nil,
+        pm2_5_cf_1: Double? = nil,
+        pm2_5_10minute: Double? = nil,
+        pm2_5_30minute: Double? = nil,
+        pm2_5_60minute: Double? = nil,
+        pm2_5_6hour: Double? = nil,
+        pm2_5_24hour: Double? = nil,
+        pm2_5_1week: Double? = nil,
+        pm1_0: Double? = nil,
+        pm10_0: Double? = nil,
+        voc: Double? = nil,
         isPublic: Bool? = nil,
-        channelFlags: ChannelFlags? = nil
+        channelFlags: ChannelFlags? = nil,
+        channelState: ChannelState? = nil
     ) {
         self.id = id
         self.name = name
@@ -95,5 +113,6 @@ public struct SensorResponse: Codable, Sendable {
         self.voc = voc
         self.isPublic = isPublic
         self.channelFlags = channelFlags
+        self.channelState = channelState
     }
 }
