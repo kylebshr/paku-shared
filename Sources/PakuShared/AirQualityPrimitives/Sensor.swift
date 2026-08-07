@@ -20,9 +20,6 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
     public let pm2_5_10minute: Double
     public let pm2_5_30minute: Double
     public let pm2_5_60minute: Double
-    public let pm2_5_6hour: Double
-    public let pm2_5_24hour: Double
-    public let pm2_5_1week: Double
     public let pm1_0: Double?
     public let pm10_0: Double?
     public let voc: Double?
@@ -35,10 +32,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
             let pm2_5_cf_1 = response.pm2_5_cf_1,
             let pm2_5_10minute = response.pm2_5_10minute,
             let pm2_5_30minute = response.pm2_5_30minute,
-            let pm2_5_60minute = response.pm2_5_60minute,
-            let pm2_5_6hour = response.pm2_5_6hour,
-            let pm2_5_24hour = response.pm2_5_24hour,
-            let pm2_5_1week = response.pm2_5_1week
+            let pm2_5_60minute = response.pm2_5_60minute
         else {
             throw InitError.missingField
         }
@@ -58,9 +52,6 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         self.pm2_5_10minute = pm2_5_10minute
         self.pm2_5_30minute = pm2_5_30minute
         self.pm2_5_60minute = pm2_5_60minute
-        self.pm2_5_6hour = pm2_5_6hour
-        self.pm2_5_24hour = pm2_5_24hour
-        self.pm2_5_1week = pm2_5_1week
         self.pm1_0 = response.pm1_0
         self.pm10_0 = response.pm10_0
         self.voc = response.voc
@@ -117,12 +108,11 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
             return pm2_5_30minute
         case .oneHour:
             return pm2_5_60minute
-        case .sixHours:
-            return pm2_5_6hour
-        case .day:
-            return pm2_5_24hour
-        case .week:
-            return pm2_5_1week
+        // The long-window averages are no longer fetched, but legacy
+        // persisted settings may still select these periods; the one-hour
+        // average is the closest data still available.
+        case .sixHours, .day, .week:
+            return pm2_5_60minute
         }
     }
 

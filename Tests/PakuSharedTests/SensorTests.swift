@@ -19,14 +19,31 @@ final class SensorTests: XCTestCase {
             pm2_5_10minute: 10,
             pm2_5_30minute: 10,
             pm2_5_60minute: 10,
-            pm2_5_6hour: 10,
-            pm2_5_24hour: 10,
-            pm2_5_1week: 10,
             pm1_0: nil,
             pm10_0: nil,
             voc: nil,
             channelFlags: channelFlags
         )
+    }
+
+    func test_legacyPeriodsFallBackToTheOneHourAverage() throws {
+        let sensor = try Sensor(response: SensorResponse(
+            id: 1,
+            name: "Sensor",
+            latitude: 37.0,
+            longitude: -122.0,
+            locationType: .outdoors,
+            lastSeen: Date(timeIntervalSince1970: 1_000_000),
+            pm2_5: 10,
+            pm2_5_cf_1: 10,
+            pm2_5_10minute: 20,
+            pm2_5_30minute: 30,
+            pm2_5_60minute: 40
+        ))
+
+        XCTAssertEqual(sensor.pm2_5(for: .sixHours), 40)
+        XCTAssertEqual(sensor.pm2_5(for: .day), 40)
+        XCTAssertEqual(sensor.pm2_5(for: .week), 40)
     }
 
     func test_channelFlagsCarriesThroughFromResponse() throws {

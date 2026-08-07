@@ -45,9 +45,6 @@ public struct SensorResponse: Codable, Sendable {
     public let pm2_5_10minute: Double?
     public let pm2_5_30minute: Double?
     public let pm2_5_60minute: Double?
-    public let pm2_5_6hour: Double?
-    public let pm2_5_24hour: Double?
-    public let pm2_5_1week: Double?
     public let pm1_0: Double?
     public let pm10_0: Double?
     public let voc: Double?
@@ -80,9 +77,6 @@ public struct SensorResponse: Codable, Sendable {
         pm2_5_10minute: Double? = nil,
         pm2_5_30minute: Double? = nil,
         pm2_5_60minute: Double? = nil,
-        pm2_5_6hour: Double? = nil,
-        pm2_5_24hour: Double? = nil,
-        pm2_5_1week: Double? = nil,
         pm1_0: Double? = nil,
         pm10_0: Double? = nil,
         voc: Double? = nil,
@@ -105,14 +99,78 @@ public struct SensorResponse: Codable, Sendable {
         self.pm2_5_10minute = pm2_5_10minute
         self.pm2_5_30minute = pm2_5_30minute
         self.pm2_5_60minute = pm2_5_60minute
-        self.pm2_5_6hour = pm2_5_6hour
-        self.pm2_5_24hour = pm2_5_24hour
-        self.pm2_5_1week = pm2_5_1week
         self.pm1_0 = pm1_0
         self.pm10_0 = pm10_0
         self.voc = voc
         self.isPublic = isPublic
         self.channelFlags = channelFlags
         self.channelState = channelState
+    }
+
+    /// The keys `encode(to:)` writes. Every property key, plus the three
+    /// long-window averages that no longer have stored properties. Kept
+    /// separate from the synthesized `CodingKeys` so decoding stays
+    /// synthesized and ignores the legacy keys entirely (new snapshots omit
+    /// them).
+    private enum WireCodingKeys: String, CodingKey {
+        case id
+        case name
+        case latitude
+        case longitude
+        case locationType
+        case lastSeen
+        case altitude
+        case humidity
+        case confidence
+        case temperature
+        case pm2_5
+        case pm2_5_cf_1
+        case pm2_5_10minute
+        case pm2_5_30minute
+        case pm2_5_60minute
+        case pm1_0
+        case pm10_0
+        case voc
+        case isPublic
+        case channelFlags
+        case channelState
+        case pm2_5_6hour
+        case pm2_5_24hour
+        case pm2_5_1week
+    }
+
+    /// Written by hand rather than synthesized because every released iOS
+    /// app version requires `pm2_5_6hour`, `pm2_5_24hour` and `pm2_5_1week`
+    /// to decode as non-nil for *every* sensor, and drops any sensor that is
+    /// missing one. This type is the server's wire format, so those keys have
+    /// to keep appearing; a constant 0 satisfies the old guard, and the
+    /// values are unused by any current UI.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: WireCodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(latitude, forKey: .latitude)
+        try container.encode(longitude, forKey: .longitude)
+        try container.encode(locationType, forKey: .locationType)
+        try container.encode(lastSeen, forKey: .lastSeen)
+        try container.encodeIfPresent(altitude, forKey: .altitude)
+        try container.encodeIfPresent(humidity, forKey: .humidity)
+        try container.encodeIfPresent(confidence, forKey: .confidence)
+        try container.encodeIfPresent(temperature, forKey: .temperature)
+        try container.encodeIfPresent(pm2_5, forKey: .pm2_5)
+        try container.encodeIfPresent(pm2_5_cf_1, forKey: .pm2_5_cf_1)
+        try container.encodeIfPresent(pm2_5_10minute, forKey: .pm2_5_10minute)
+        try container.encodeIfPresent(pm2_5_30minute, forKey: .pm2_5_30minute)
+        try container.encodeIfPresent(pm2_5_60minute, forKey: .pm2_5_60minute)
+        try container.encodeIfPresent(pm1_0, forKey: .pm1_0)
+        try container.encodeIfPresent(pm10_0, forKey: .pm10_0)
+        try container.encodeIfPresent(voc, forKey: .voc)
+        try container.encodeIfPresent(isPublic, forKey: .isPublic)
+        try container.encodeIfPresent(channelFlags, forKey: .channelFlags)
+        try container.encodeIfPresent(channelState, forKey: .channelState)
+
+        try container.encode(0 as Double, forKey: .pm2_5_6hour)
+        try container.encode(0 as Double, forKey: .pm2_5_24hour)
+        try container.encode(0 as Double, forKey: .pm2_5_1week)
     }
 }

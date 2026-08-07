@@ -388,9 +388,6 @@ final class LiveActivityContentStateTests: XCTestCase {
             pm2_5_10minute: tenMinutes,
             pm2_5_30minute: pm2_5,
             pm2_5_60minute: sixtyMinutes,
-            pm2_5_6hour: pm2_5,
-            pm2_5_24hour: pm2_5,
-            pm2_5_1week: pm2_5,
             pm1_0: nil,
             pm10_0: nil,
             voc: nil
