@@ -26,7 +26,7 @@ final class SensorTests: XCTestCase {
         )
     }
 
-    func test_legacyPeriodsFallBackToTheOneHourAverage() throws {
+    func test_eachPeriodReadsItsOwnAverage() throws {
         let sensor = try Sensor(response: SensorResponse(
             id: 1,
             name: "Sensor",
@@ -41,9 +41,10 @@ final class SensorTests: XCTestCase {
             pm2_5_60minute: 40
         ))
 
-        XCTAssertEqual(sensor.pm2_5(for: .sixHours), 40)
-        XCTAssertEqual(sensor.pm2_5(for: .day), 40)
-        XCTAssertEqual(sensor.pm2_5(for: .week), 40)
+        XCTAssertEqual(sensor.pm2_5(for: .now), 10)
+        XCTAssertEqual(sensor.pm2_5(for: .tenMinutes), 20)
+        XCTAssertEqual(sensor.pm2_5(for: .halfHour), 30)
+        XCTAssertEqual(sensor.pm2_5(for: .oneHour), 40)
     }
 
     func test_channelFlagsCarriesThroughFromResponse() throws {
