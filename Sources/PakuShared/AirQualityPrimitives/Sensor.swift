@@ -108,11 +108,6 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
             return pm2_5_30minute
         case .oneHour:
             return pm2_5_60minute
-        // The long-window averages are no longer fetched, but legacy
-        // persisted settings may still select these periods; the one-hour
-        // average is the closest data still available.
-        case .sixHours, .day, .week:
-            return pm2_5_60minute
         }
     }
 

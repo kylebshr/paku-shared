@@ -26,7 +26,7 @@ final class SensorTests: XCTestCase {
         )
     }
 
-    func test_legacyPeriodsFallBackToTheOneHourAverage() throws {
+    func test_eachPeriodReadsItsOwnAverage() throws {
         let sensor = try Sensor(response: SensorResponse(
             id: 1,
             name: "Sensor",
@@ -41,9 +41,31 @@ final class SensorTests: XCTestCase {
             pm2_5_60minute: 40
         ))
 
-        XCTAssertEqual(sensor.pm2_5(for: .sixHours), 40)
-        XCTAssertEqual(sensor.pm2_5(for: .day), 40)
-        XCTAssertEqual(sensor.pm2_5(for: .week), 40)
+        XCTAssertEqual(sensor.pm2_5(for: .now), 10)
+        XCTAssertEqual(sensor.pm2_5(for: .tenMinutes), 20)
+        XCTAssertEqual(sensor.pm2_5(for: .halfHour), 30)
+        XCTAssertEqual(sensor.pm2_5(for: .oneHour), 40)
+    }
+
+    func test_legacyPersistedPeriodDecodesToTheOneHourAverage() throws {
+        // A device carrying raw value 6 (the removed one-week period) in its
+        // settings still gets a usable reading rather than a decode failure.
+        let period = try JSONDecoder().decode(AverageTimePeriod.self, from: XCTUnwrap("6".data(using: .utf8)))
+        let sensor = try Sensor(response: SensorResponse(
+            id: 1,
+            name: "Sensor",
+            latitude: 37.0,
+            longitude: -122.0,
+            locationType: .outdoors,
+            lastSeen: Date(timeIntervalSince1970: 1_000_000),
+            pm2_5: 10,
+            pm2_5_cf_1: 10,
+            pm2_5_10minute: 20,
+            pm2_5_30minute: 30,
+            pm2_5_60minute: 40
+        ))
+
+        XCTAssertEqual(sensor.pm2_5(for: period), 40)
     }
 
     func test_channelFlagsCarriesThroughFromResponse() throws {
