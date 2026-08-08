@@ -67,7 +67,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.value(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
     }
@@ -80,7 +80,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.aqhi(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
     }
@@ -93,9 +93,17 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.aqhiPlus(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
+    }
+
+    /// The EPA conversion corrects a bias specific to PurpleAir's particle
+    /// counters, so it only ever applies to PurpleAir sensors — a stored
+    /// preference or alert row carrying `.EPA` must not distort readings
+    /// from other networks.
+    private func resolvedConversion(_ conversion: AQIConversion) -> AQIConversion {
+        source == .purpleAir ? conversion : .none
     }
 
     public func pm2_5(for period: AverageTimePeriod) -> Double {

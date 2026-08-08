@@ -11,6 +11,24 @@ import Foundation
 public enum SensorSource: String, Codable, Sendable, CaseIterable {
     case purpleAir
     case airGradient
+
+    public var displayName: String {
+        switch self {
+        case .purpleAir: "PurpleAir"
+        case .airGradient: "AirGradient"
+        }
+    }
+
+    /// The static file serving this source's full sensor directory, as a
+    /// `SensorDirectory` payload relative to the API base URL. A client
+    /// data-source toggle maps to fetching (or filtering out) one source's
+    /// directory; the per-ID endpoints are shared across sources.
+    public var directoryFile: String {
+        switch self {
+        case .purpleAir: "sensors.json"
+        case .airGradient: "airgradient-sensors.json"
+        }
+    }
 }
 
 /// The reserved ID ranges that partition the shared sensor ID space, and
