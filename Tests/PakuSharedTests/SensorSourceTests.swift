@@ -20,7 +20,7 @@ final class SensorSourceTests: XCTestCase {
         XCTAssertNil(SensorIDSpace.airGradientLocationID(from: 214_591))
     }
 
-    func test_epaConversionOnlyAppliesToPurpleAirSensors() throws {
+    func test_epaConversionAppliesToPlantowerBasedSources() throws {
         func sensor(id: Int) throws -> Sensor {
             try Sensor(response: SensorResponse(
                 id: id,
@@ -45,13 +45,13 @@ final class SensorSourceTests: XCTestCase {
         )
 
         let airGradient = try sensor(id: SensorIDSpace.airGradientSensorID(locationID: 89))
-        XCTAssertEqual(
+        XCTAssertNotEqual(
             airGradient.aqiValue(period: .now, conversion: .EPA),
             airGradient.aqiValue(period: .now, conversion: .none)
         )
         XCTAssertEqual(
             airGradient.aqiValue(period: .now, conversion: .EPA),
-            purpleAir.aqiValue(period: .now, conversion: .none)
+            purpleAir.aqiValue(period: .now, conversion: .EPA)
         )
     }
 
