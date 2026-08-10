@@ -20,7 +20,7 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
-        isCritical: Bool
+        isCritical: Bool? = nil
     ) {
         self.userID = userID
         self.deviceID = deviceID

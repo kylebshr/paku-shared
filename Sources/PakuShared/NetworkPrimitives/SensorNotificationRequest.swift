@@ -16,7 +16,7 @@ public struct SensorNotificationRequest: Codable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
-        isCritical: Bool
+        isCritical: Bool? = nil
     ) {
         self.userID = userID
         self.sensorID = sensorID
