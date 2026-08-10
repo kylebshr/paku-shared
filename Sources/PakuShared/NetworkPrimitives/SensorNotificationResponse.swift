@@ -8,6 +8,9 @@ public struct SensorNotificationResponse: Codable, Hashable, Sendable {
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
     public var sendBelowThreshold: Bool
+    /// Optional so payloads cached before the field existed still decode;
+    /// `nil` means false.
+    public var isCritical: Bool?
     public var isNearestSensor: Bool
 
     public init(
@@ -18,6 +21,7 @@ public struct SensorNotificationResponse: Codable, Hashable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
+        isCritical: Bool,
         isNearestSensor: Bool
     ) {
         self.id = id
@@ -27,6 +31,7 @@ public struct SensorNotificationResponse: Codable, Hashable, Sendable {
         self.conversion = conversion
         self.averagingPeriod = averagingPeriod
         self.sendBelowThreshold = sendBelowThreshold
+        self.isCritical = isCritical
         self.isNearestSensor = isNearestSensor
     }
 }
