@@ -1,36 +1,44 @@
-import XCTest
+import Foundation
+import Testing
 @testable import PakuShared
 
-final class AverageTimePeriodTests: XCTestCase {
+@Suite("AverageTimePeriod")
+struct AverageTimePeriodTests {
     private func decode(_ json: String) throws -> AverageTimePeriod {
-        let data = try XCTUnwrap(json.data(using: .utf8))
+        let data = try #require(json.data(using: .utf8))
         return try JSONDecoder().decode(AverageTimePeriod.self, from: data)
     }
 
-    func test_supportedRawValuesRoundTrip() throws {
-        for period in AverageTimePeriod.allCases {
-            let data = try JSONEncoder().encode(period)
-            let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+    @Test("Every case survives a Codable round trip", arguments: AverageTimePeriod.allCases)
+    func roundTrips(period: AverageTimePeriod) throws {
+        let data = try JSONEncoder().encode(period)
+        let json = try #require(String(data: data, encoding: .utf8))
 
-            XCTAssertEqual(json, String(period.rawValue))
-            XCTAssertEqual(try decode(json), period)
-        }
+        #expect(json == String(period.rawValue))
+        #expect(try decode(json) == period)
     }
 
-    func test_supportedRawValuesDecodeExactly() throws {
-        XCTAssertEqual(try decode("0"), .now)
-        XCTAssertEqual(try decode("1"), .tenMinutes)
-        XCTAssertEqual(try decode("2"), .halfHour)
-        XCTAssertEqual(try decode("3"), .oneHour)
+    /// The raw values are the wire format — pinned so a reordering of the
+    /// cases can't silently renumber them.
+    @Test("Raw values decode to exactly one case", arguments: [
+        (json: "0", period: AverageTimePeriod.now),
+        (json: "1", period: .tenMinutes),
+        (json: "2", period: .halfHour),
+        (json: "3", period: .oneHour),
+    ])
+    func decodesExactly(json: String, period: AverageTimePeriod) throws {
+        #expect(try decode(json) == period)
+        #expect(AverageTimePeriod(rawValue: period.rawValue) == period)
     }
 
-    func test_rawValueInitializer() {
-        XCTAssertEqual(AverageTimePeriod(rawValue: 0), .now)
-        XCTAssertEqual(AverageTimePeriod(rawValue: 3), .oneHour)
-        XCTAssertNil(AverageTimePeriod(rawValue: 4))
+    @Test("Unknown raw values are rejected")
+    func rejectsUnknownRawValue() {
+        #expect(AverageTimePeriod(rawValue: 4) == nil)
+        #expect(AverageTimePeriod(rawValue: -1) == nil)
     }
 
-    func test_allCasesAreTheFourSupportedPeriods() {
-        XCTAssertEqual(AverageTimePeriod.allCases, [.now, .tenMinutes, .halfHour, .oneHour])
+    @Test("allCases is the four supported periods, in order")
+    func allCasesAreTheFourSupportedPeriods() {
+        #expect(AverageTimePeriod.allCases == [.now, .tenMinutes, .halfHour, .oneHour])
     }
 }
