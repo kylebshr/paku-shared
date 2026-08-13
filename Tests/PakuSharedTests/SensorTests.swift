@@ -1,68 +1,38 @@
-import XCTest
+import Foundation
+import Testing
 @testable import PakuShared
 
-final class SensorTests: XCTestCase {
-    private func makeResponse(channelFlags: ChannelFlags?) -> SensorResponse {
-        SensorResponse(
-            id: 1,
-            name: "Sensor",
-            latitude: 37.0,
-            longitude: -122.0,
-            locationType: .outdoors,
-            lastSeen: Date(timeIntervalSince1970: 1_000_000),
-            altitude: nil,
-            humidity: nil,
-            confidence: nil,
-            temperature: nil,
-            pm2_5: 10,
-            pm2_5_cf_1: 10,
-            pm2_5_10minute: 10,
-            pm2_5_30minute: 10,
-            pm2_5_60minute: 10,
-            pm1_0: nil,
-            pm10_0: nil,
-            voc: nil,
-            channelFlags: channelFlags
+@Suite("Sensor")
+struct SensorTests {
+    @Test("Each period reads its own average", arguments: [
+        (period: AverageTimePeriod.now, expected: 10.0),
+        (period: .tenMinutes, expected: 20.0),
+        (period: .halfHour, expected: 30.0),
+        (period: .oneHour, expected: 40.0),
+    ])
+    func eachPeriodReadsItsOwnAverage(period: AverageTimePeriod, expected: Double) throws {
+        let sensor = try Sensor.stub(
+            pm2_5: 10, pm2_5_10minute: 20, pm2_5_30minute: 30, pm2_5_60minute: 40
         )
+
+        #expect(sensor.pm2_5(for: period) == expected)
     }
 
-    func test_eachPeriodReadsItsOwnAverage() throws {
-        let sensor = try Sensor(response: SensorResponse(
-            id: 1,
-            name: "Sensor",
-            latitude: 37.0,
-            longitude: -122.0,
-            locationType: .outdoors,
-            lastSeen: Date(timeIntervalSince1970: 1_000_000),
-            pm2_5: 10,
-            pm2_5_cf_1: 10,
-            pm2_5_10minute: 20,
-            pm2_5_30minute: 30,
-            pm2_5_60minute: 40
-        ))
-
-        XCTAssertEqual(sensor.pm2_5(for: .now), 10)
-        XCTAssertEqual(sensor.pm2_5(for: .tenMinutes), 20)
-        XCTAssertEqual(sensor.pm2_5(for: .halfHour), 30)
-        XCTAssertEqual(sensor.pm2_5(for: .oneHour), 40)
+    @Test("channelFlags carries through from the response", arguments: [
+        ChannelFlags.normal, .aDowngraded, .bDowngraded, .bothDowngraded,
+    ])
+    func channelFlagsCarriesThroughFromResponse(flags: ChannelFlags) throws {
+        let sensor = try Sensor.stub(channelFlags: flags)
+        #expect(sensor.channelFlags == flags)
     }
 
-    func test_channelFlagsCarriesThroughFromResponse() throws {
-        let sensor = try Sensor(response: makeResponse(channelFlags: .bDowngraded))
-        XCTAssertEqual(sensor.channelFlags, .bDowngraded)
-    }
+    /// Sensor values encoded by app versions that predate the field must
+    /// keep decoding.
+    @Test("Decoding without channelFlags yields nil")
+    func decodingWithoutChannelFlagsIsNil() throws {
+        let data = try encoded(Sensor.stub(channelFlags: .normal), omitting: "channelFlags")
 
-    func test_decodingWithoutChannelFlagsIsNil() throws {
-        // Sensor values encoded by app versions that predate the field must
-        // keep decoding.
-        var data = try JSONEncoder().encode(Sensor(response: makeResponse(channelFlags: .normal)))
-        var json = try XCTUnwrap(String(data: data, encoding: .utf8))
-        json = json.replacingOccurrences(of: "\"channelFlags\":0,", with: "")
-        json = json.replacingOccurrences(of: ",\"channelFlags\":0", with: "")
-        data = try XCTUnwrap(json.data(using: .utf8))
-
-        XCTAssertFalse(json.contains("channelFlags"))
         let decoded = try JSONDecoder().decode(Sensor.self, from: data)
-        XCTAssertNil(decoded.channelFlags)
+        #expect(decoded.channelFlags == nil)
     }
 }
