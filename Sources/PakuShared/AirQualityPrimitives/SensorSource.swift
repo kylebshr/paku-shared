@@ -63,6 +63,13 @@ public enum SensorIDSpace {
         guard sensorID >= airGradientOffset else { return nil }
         return sensorID - airGradientOffset
     }
+
+    /// The source-native ID a namespaced sensor ID maps to — the value to
+    /// show users and to reference on the source's own site. IDs outside
+    /// every reserved range are already native and pass through unchanged.
+    public static func nativeID(from sensorID: Int) -> Int {
+        airGradientLocationID(from: sensorID) ?? sensorID
+    }
 }
 
 public extension SensorResponse {
