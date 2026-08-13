@@ -1,26 +1,26 @@
-import XCTest
+import Foundation
+import Testing
 @testable import PakuShared
 
-final class SensorSourceTests: XCTestCase {
-    func test_purpleAirRangeStaysPurpleAir() {
-        XCTAssertEqual(SensorIDSpace.source(of: 1), .purpleAir)
-        XCTAssertEqual(SensorIDSpace.source(of: 214_591), .purpleAir)
-        XCTAssertEqual(SensorIDSpace.source(of: SensorIDSpace.airGradientOffset - 1), .purpleAir)
+struct SensorSourceTests {
+    @Test(arguments: [1, 214_591, SensorIDSpace.airGradientOffset - 1])
+    func purpleAirRangeStaysPurpleAir(id: Int) {
+        #expect(SensorIDSpace.source(of: id) == .purpleAir)
     }
 
-    func test_airGradientRangeMapsToAirGradient() {
-        XCTAssertEqual(SensorIDSpace.source(of: SensorIDSpace.airGradientOffset), .airGradient)
-        XCTAssertEqual(SensorIDSpace.source(of: SensorIDSpace.airGradientSensorID(locationID: 89)), .airGradient)
+    @Test(arguments: [SensorIDSpace.airGradientOffset, SensorIDSpace.airGradientSensorID(locationID: 89)])
+    func airGradientRangeMapsToAirGradient(id: Int) {
+        #expect(SensorIDSpace.source(of: id) == .airGradient)
     }
 
-    func test_airGradientIDsRoundTrip() {
+    @Test func airGradientIDsRoundTrip() {
         let sensorID = SensorIDSpace.airGradientSensorID(locationID: 9_999_999)
-        XCTAssertEqual(sensorID, 2_009_999_999)
-        XCTAssertEqual(SensorIDSpace.airGradientLocationID(from: sensorID), 9_999_999)
-        XCTAssertNil(SensorIDSpace.airGradientLocationID(from: 214_591))
+        #expect(sensorID == 2_009_999_999)
+        #expect(SensorIDSpace.airGradientLocationID(from: sensorID) == 9_999_999)
+        #expect(SensorIDSpace.airGradientLocationID(from: 214_591) == nil)
     }
 
-    func test_epaConversionAppliesToPlantowerBasedSources() throws {
+    @Test func epaConversionAppliesToPlantowerBasedSources() throws {
         func sensor(id: Int) throws -> Sensor {
             try Sensor(response: SensorResponse(
                 id: id,
@@ -39,45 +39,36 @@ final class SensorSourceTests: XCTestCase {
         }
 
         let purpleAir = try sensor(id: 214_591)
-        XCTAssertNotEqual(
-            purpleAir.aqiValue(period: .now, conversion: .EPA),
-            purpleAir.aqiValue(period: .now, conversion: .none)
-        )
+        #expect(purpleAir.aqiValue(period: .now, conversion: .EPA) != purpleAir.aqiValue(period: .now, conversion: .none))
 
         let airGradient = try sensor(id: SensorIDSpace.airGradientSensorID(locationID: 89))
-        XCTAssertNotEqual(
-            airGradient.aqiValue(period: .now, conversion: .EPA),
-            airGradient.aqiValue(period: .now, conversion: .none)
-        )
-        XCTAssertEqual(
-            airGradient.aqiValue(period: .now, conversion: .EPA),
-            purpleAir.aqiValue(period: .now, conversion: .EPA)
-        )
+        #expect(airGradient.aqiValue(period: .now, conversion: .EPA) != airGradient.aqiValue(period: .now, conversion: .none))
+        #expect(airGradient.aqiValue(period: .now, conversion: .EPA) == purpleAir.aqiValue(period: .now, conversion: .EPA))
     }
 
-    func test_directoryFileAndDisplayNamePerSource() {
-        XCTAssertEqual(SensorSource.purpleAir.directoryFile, "sensors.json")
-        XCTAssertEqual(SensorSource.airGradient.directoryFile, "airgradient-sensors.json")
-        XCTAssertEqual(SensorSource.airGradient.displayName, "AirGradient")
+    @Test func directoryFileAndDisplayNamePerSource() {
+        #expect(SensorSource.purpleAir.directoryFile == "sensors.json")
+        #expect(SensorSource.airGradient.directoryFile == "airgradient-sensors.json")
+        #expect(SensorSource.airGradient.displayName == "AirGradient")
     }
 
-    func test_sensorDirectoryWireShape() throws {
+    @Test func sensorDirectoryWireShape() throws {
         let directory = SensorDirectory(asOf: 1_700_000_000, sensors: [
             .init(id: 2_000_000_089, name: "Sand Ridge", loc: .outdoors, lat: 41.3644, lon: -83.6612),
         ])
 
         let data = try JSONEncoder().encode(directory)
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        XCTAssertEqual(object["asOf"] as? Int, 1_700_000_000)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["asOf"] as? Int == 1_700_000_000)
 
-        let entry = try XCTUnwrap((object["sensors"] as? [[String: Any]])?.first)
-        XCTAssertEqual(Set(entry.keys), ["id", "name", "loc", "lat", "lon"])
-        XCTAssertEqual(entry["loc"] as? Int, 0)
+        let entry = try #require((object["sensors"] as? [[String: Any]])?.first)
+        #expect(Set(entry.keys) == ["id", "name", "loc", "lat", "lon"])
+        #expect(entry["loc"] as? Int == 0)
 
-        XCTAssertEqual(try JSONDecoder().decode(SensorDirectory.self, from: data), directory)
+        #expect(try JSONDecoder().decode(SensorDirectory.self, from: data) == directory)
     }
 
-    func test_sensorResponseDerivesSourceFromID() throws {
+    @Test func sensorResponseDerivesSourceFromID() throws {
         let purpleAir = SensorResponse(
             id: 214_591,
             name: "PurpleAir",
@@ -86,7 +77,7 @@ final class SensorSourceTests: XCTestCase {
             locationType: .outdoors,
             lastSeen: Date()
         )
-        XCTAssertEqual(purpleAir.source, .purpleAir)
+        #expect(purpleAir.source == .purpleAir)
 
         let airGradient = SensorResponse(
             id: SensorIDSpace.airGradientSensorID(locationID: 89),
@@ -101,7 +92,7 @@ final class SensorSourceTests: XCTestCase {
             pm2_5_30minute: 8,
             pm2_5_60minute: 8
         )
-        XCTAssertEqual(airGradient.source, .airGradient)
-        XCTAssertEqual(try Sensor(response: airGradient).source, .airGradient)
+        #expect(airGradient.source == .airGradient)
+        #expect(try Sensor(response: airGradient).source == .airGradient)
     }
 }
