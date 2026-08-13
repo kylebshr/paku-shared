@@ -67,7 +67,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.value(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
     }
@@ -80,7 +80,7 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.aqhi(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
     }
@@ -93,9 +93,22 @@ public struct Sensor: Codable, Equatable, Identifiable, Hashable, Sendable {
         return AQI.aqhiPlus(
             for: pm2_5,
             humidity: humidity,
-            conversion: conversion,
+            conversion: resolvedConversion(conversion),
             location: locationType
         )
+    }
+
+    /// The EPA conversion corrects the ~50% high-concentration over-read
+    /// of Plantower particle counters, which PurpleAir and AirGradient
+    /// monitors share — AirGradient validated the same EPA equation on
+    /// their hardware, and co-located pairs agree most tightly with both
+    /// networks corrected. A future reference-grade source (regulatory
+    /// monitors via OpenAQ/AirNow) must resolve to `.none` here: its
+    /// readings have no counter bias to correct.
+    private func resolvedConversion(_ conversion: AQIConversion) -> AQIConversion {
+        switch source {
+        case .purpleAir, .airGradient: conversion
+        }
     }
 
     public func pm2_5(for period: AverageTimePeriod) -> Double {
