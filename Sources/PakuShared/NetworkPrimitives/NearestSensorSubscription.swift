@@ -11,6 +11,9 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
     public var sendBelowThreshold: Bool
+    /// Optional so payloads cached before the field existed still decode;
+    /// `nil` means false.
+    public var isCritical: Bool?
     public var lastReportedAt: Date
 
     public init(
@@ -21,6 +24,7 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
         sendBelowThreshold: Bool,
+        isCritical: Bool,
         lastReportedAt: Date
     ) {
         self.deviceID = deviceID
@@ -30,6 +34,7 @@ public struct NearestSensorSubscriptionResponse: Codable, Sendable {
         self.conversion = conversion
         self.averagingPeriod = averagingPeriod
         self.sendBelowThreshold = sendBelowThreshold
+        self.isCritical = isCritical
         self.lastReportedAt = lastReportedAt
     }
 }

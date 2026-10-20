@@ -10,6 +10,7 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
     public var conversion: AQIConversion
     public var averagingPeriod: AverageTimePeriod
     public var sendBelowThreshold: Bool
+    public var isCritical: Bool?
 
     public init(
         userID: UUID,
@@ -18,7 +19,8 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
         threshold: Int,
         conversion: AQIConversion,
         averagingPeriod: AverageTimePeriod,
-        sendBelowThreshold: Bool
+        sendBelowThreshold: Bool,
+        isCritical: Bool? = nil
     ) {
         self.userID = userID
         self.deviceID = deviceID
@@ -27,6 +29,7 @@ public struct CreateNearestSensorSubscriptionRequest: Codable, Sendable {
         self.conversion = conversion
         self.averagingPeriod = averagingPeriod
         self.sendBelowThreshold = sendBelowThreshold
+        self.isCritical = isCritical
     }
 }
 
