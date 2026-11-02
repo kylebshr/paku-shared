@@ -10,6 +10,7 @@ struct APNSensorNotificationTests {
         let payload = APNSensorNotification(
             sensorID: 42,
             titleTemplate: "Alerts Enabled for %@",
+            subtitleTemplate: "%@",
             bodyTemplate: "AQI at %@ is now 151 (real-time)"
         )
 
@@ -18,6 +19,7 @@ struct APNSensorNotificationTests {
 
         #expect(json?["sensor_id"] as? Int == 42)
         #expect(json?["title_template"] as? String == "Alerts Enabled for %@")
+        #expect(json?["subtitle_template"] as? String == "%@")
         #expect(json?["body_template"] as? String == "AQI at %@ is now 151 (real-time)")
     }
 
@@ -42,7 +44,19 @@ struct APNSensorNotificationTests {
 
         #expect(payload?.sensorID == 42)
         #expect(payload?.titleTemplate == nil)
+        #expect(payload?.subtitleTemplate == nil)
         #expect(payload?.bodyTemplate == "%@ is back online. Alerts have resumed.")
+    }
+
+    @Test("A subtitle template alone makes a payload")
+    func decodesSubtitleOnlyUserInfo() {
+        let payload = APNSensorNotification(userInfo: [
+            "aps": ["alert": ["title": "Unhealthy Air"]],
+            "subtitle_template": "%@",
+        ])
+
+        #expect(payload?.sensorID == nil)
+        #expect(payload?.subtitleTemplate == "%@")
     }
 
     @Test("userInfo without any payload keys is not a payload")
@@ -52,15 +66,17 @@ struct APNSensorNotificationTests {
 
     @Suite("Template rendering")
     struct TemplateRenderingTests {
-        @Test("Fills the sensor name into both templates")
+        @Test("Fills the sensor name into every template")
         func fillsTemplates() {
             let payload = APNSensorNotification(
                 sensorID: 42,
                 titleTemplate: "Alerts Enabled for %@",
+                subtitleTemplate: "%@",
                 bodyTemplate: "%@ is back online. Alerts have resumed."
             )
 
             #expect(payload.title(sensorName: "Backyard") == "Alerts Enabled for Backyard")
+            #expect(payload.subtitle(sensorName: "Backyard") == "Backyard")
             #expect(payload.body(sensorName: "Backyard") == "Backyard is back online. Alerts have resumed.")
         }
 
@@ -69,6 +85,7 @@ struct APNSensorNotificationTests {
             let payload = APNSensorNotification(sensorID: 42)
 
             #expect(payload.title(sensorName: "Backyard") == nil)
+            #expect(payload.subtitle(sensorName: "Backyard") == nil)
             #expect(payload.body(sensorName: "Backyard") == nil)
         }
 
@@ -82,9 +99,15 @@ struct APNSensorNotificationTests {
             "100%% at %@",
         ])
         func refusesMalformedTemplates(template: String) {
-            let payload = APNSensorNotification(sensorID: 42, titleTemplate: template, bodyTemplate: template)
+            let payload = APNSensorNotification(
+                sensorID: 42,
+                titleTemplate: template,
+                subtitleTemplate: template,
+                bodyTemplate: template
+            )
 
             #expect(payload.title(sensorName: "Backyard") == nil)
+            #expect(payload.subtitle(sensorName: "Backyard") == nil)
             #expect(payload.body(sensorName: "Backyard") == nil)
         }
     }
