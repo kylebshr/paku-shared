@@ -13,34 +13,52 @@ public struct APNSensorNotification: Codable, Sendable {
 
     public var sensorID: Int?
     public var titleTemplate: String?
+    public var subtitleTemplate: String?
     public var bodyTemplate: String?
 
     enum CodingKeys: String, CodingKey {
         case sensorID = "sensor_id"
         case titleTemplate = "title_template"
+        case subtitleTemplate = "subtitle_template"
         case bodyTemplate = "body_template"
     }
 
-    public init(sensorID: Int?, titleTemplate: String? = nil, bodyTemplate: String? = nil) {
+    public init(
+        sensorID: Int?,
+        titleTemplate: String? = nil,
+        subtitleTemplate: String? = nil,
+        bodyTemplate: String? = nil
+    ) {
         self.sensorID = sensorID
         self.titleTemplate = titleTemplate
+        self.subtitleTemplate = subtitleTemplate
         self.bodyTemplate = bodyTemplate
     }
 
     public init?(userInfo: [AnyHashable: Any]) {
         let sensorID = userInfo[CodingKeys.sensorID.rawValue] as? Int
         let titleTemplate = userInfo[CodingKeys.titleTemplate.rawValue] as? String
+        let subtitleTemplate = userInfo[CodingKeys.subtitleTemplate.rawValue] as? String
         let bodyTemplate = userInfo[CodingKeys.bodyTemplate.rawValue] as? String
 
-        guard sensorID != nil || titleTemplate != nil || bodyTemplate != nil else {
+        guard sensorID != nil || titleTemplate != nil || subtitleTemplate != nil || bodyTemplate != nil else {
             return nil
         }
 
-        self.init(sensorID: sensorID, titleTemplate: titleTemplate, bodyTemplate: bodyTemplate)
+        self.init(
+            sensorID: sensorID,
+            titleTemplate: titleTemplate,
+            subtitleTemplate: subtitleTemplate,
+            bodyTemplate: bodyTemplate
+        )
     }
 
     public func title(sensorName: String) -> String? {
         titleTemplate.flatMap { Self.fill($0, sensorName: sensorName) }
+    }
+
+    public func subtitle(sensorName: String) -> String? {
+        subtitleTemplate.flatMap { Self.fill($0, sensorName: sensorName) }
     }
 
     public func body(sensorName: String) -> String? {
